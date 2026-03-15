@@ -45,24 +45,36 @@ export async function updateSession(request: NextRequest) {
   const role = user?.user_metadata?.role as
     | "student"
     | "institution"
+    | "admin"
     | undefined;
 
   const isAuthRoute = pathname === "/login" || pathname === "/register";
   const isDashboardRoute = pathname.startsWith("/dashboard");
+  const isAdminRoute = pathname.startsWith("/admin");
   const isRoot = pathname === "/";
 
   // Usuario no autenticado intentando acceder a rutas protegidas
-  if (!user && (isRoot || isDashboardRoute)) {
+  if (!user && (isRoot || isDashboardRoute || isAdminRoute)) {
     return redirect(request, "/login");
   }
 
   // Usuario autenticado intentando acceder a login/register
   if (user && isAuthRoute) {
-    return redirect(request, "/dashboard");
+    return redirect(request, role === "admin" ? "/admin" : "/dashboard");
   }
 
-  // Usuario autenticado en "/" → redirigir al dashboard
+  // Usuario autenticado en "/" → redirigir según rol
   if (user && isRoot) {
+    return redirect(request, role === "admin" ? "/admin" : "/dashboard");
+  }
+
+  // Admin intentando acceder a /dashboard → redirigir a /admin
+  if (user && role === "admin" && isDashboardRoute) {
+    return redirect(request, "/admin");
+  }
+
+  // No-admin intentando acceder a /admin → redirigir a /dashboard
+  if (user && role !== "admin" && isAdminRoute) {
     return redirect(request, "/dashboard");
   }
 

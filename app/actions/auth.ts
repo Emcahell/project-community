@@ -19,7 +19,7 @@ export async function login(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     if (error.message === "Invalid login credentials") {
@@ -28,7 +28,8 @@ export async function login(formData: FormData) {
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  const role = authData.user?.user_metadata?.role as string | undefined;
+  redirect(role === "admin" ? "/admin" : "/dashboard");
 }
 
 export async function register(formData: FormData) {

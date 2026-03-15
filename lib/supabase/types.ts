@@ -139,4 +139,4 @@ export type Application = Database["public"]["Tables"]["applications"]["Row"]
 
 export type NeedStatus = "open" | "in_progress" | "completed"
 export type ApplicationStatus = "pending" | "accepted" | "rejected"
-export type UserRole = "student" | "institution"
+export type UserRole = "student" | "institution" | "admin"

@@ -6,7 +6,7 @@ import { formatRelativeDate, getInitials } from "@/lib/utils";
 import { NeedCard } from "@/components/need-card";
 import { APPLICATION_STATUS } from "@/lib/constants";
 import { InstitutionNeedsList } from "./institution-needs-list";
-import { Plus, Settings } from "lucide-react";
+import { Plus, Settings, FileText, CheckCircle2, Clock, TrendingUp, ArrowRight } from "lucide-react";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -44,15 +44,17 @@ async function InstitutionDashboard({ userId }: { userId: string }) {
   if (!institution) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-          <Building2Icon className="w-7 h-7 text-primary" />
+        <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-primary/15 to-violet-500/10 border border-primary/20 flex items-center justify-center mx-auto mb-5">
+          <Building2Icon className="w-8 h-8 text-primary" />
         </div>
         <h1 className="text-xl font-bold mb-2">Configura tu institución</h1>
-        <p className="text-muted-foreground mb-6 text-sm">
+        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
           Antes de publicar necesidades, completa el perfil de tu institución.
         </p>
         <Link href="/dashboard/institution/setup">
-          <Button>Configurar institución</Button>
+          <Button className="shadow-sm shadow-primary/20 font-semibold">
+            Configurar institución
+          </Button>
         </Link>
       </div>
     );
@@ -75,14 +77,28 @@ async function InstitutionDashboard({ userId }: { userId: string }) {
   return (
     <div>
       {/* Header banner */}
-      <div className="relative rounded-2xl overflow-hidden bg-primary px-6 py-7 mb-8 flex items-center justify-between gap-4">
+      <div
+        className="relative rounded-2xl overflow-hidden px-6 py-8 mb-8 flex items-center justify-between gap-4"
+        style={{
+          background: "linear-gradient(135deg, oklch(0.488 0.243 264.376) 0%, oklch(0.4 0.22 285) 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div className="absolute right-0 top-0 w-56 h-56 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
+
         <div className="relative z-10">
-          <p className="text-white/60 text-xs font-medium uppercase tracking-widest mb-1">
+          <p className="text-white/50 text-[10px] font-semibold uppercase tracking-[0.15em] mb-1.5">
             Panel de institución
           </p>
-          <h1 className="text-2xl font-bold text-white">{institution.name}</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{institution.name}</h1>
         </div>
-        <div className="absolute right-0 top-0 w-48 h-48 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
         <div className="relative z-10 flex items-center gap-2 shrink-0">
           <Link href="/dashboard/profile">
             <Button
@@ -96,7 +112,7 @@ async function InstitutionDashboard({ userId }: { userId: string }) {
           <Link href="/dashboard/needs/new">
             <Button
               size="sm"
-              className="bg-white text-primary hover:bg-white/90 font-semibold"
+              className="bg-white text-primary hover:bg-white/90 font-semibold shadow-lg shadow-black/10"
             >
               <Plus className="w-4 h-4 mr-1" />
               Publicar
@@ -108,28 +124,49 @@ async function InstitutionDashboard({ userId }: { userId: string }) {
       {/* Stats */}
       {totalNeeds > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-2xl font-bold">{totalNeeds}</p>
-            <p className="text-xs text-muted-foreground mt-1">Total</p>
+          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
+            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-primary/30 via-primary to-primary/30" />
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground font-medium">Total</p>
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="w-3.5 h-3.5 text-primary" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight">{totalNeeds}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">necesidades</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-2xl font-bold text-emerald-600">{openNeeds}</p>
-            <p className="text-xs text-muted-foreground mt-1">Abiertas</p>
+          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
+            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-emerald-500/30 via-emerald-500 to-emerald-500/30" />
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground font-medium">Abiertas</p>
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-emerald-600">{openNeeds}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">activas</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-2xl font-bold text-amber-600">{totalPending}</p>
-            <p className="text-xs text-muted-foreground mt-1">Pendientes</p>
+          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
+            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-amber-500/30 via-amber-500 to-amber-500/30" />
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground font-medium">Pendientes</p>
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-amber-600">{totalPending}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">solicitudes</p>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
           Mis necesidades
         </h2>
         {totalNeeds > 0 && (
           <Link href="/dashboard/needs/new">
-            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 font-medium">
               <Plus className="w-3 h-3" /> Nueva
             </Button>
           </Link>
@@ -205,21 +242,35 @@ async function StudentDashboard({
   return (
     <div>
       {/* Header banner */}
-      <div className="relative rounded-2xl overflow-hidden bg-primary px-6 py-7 mb-8 flex items-center justify-between gap-4">
+      <div
+        className="relative rounded-2xl overflow-hidden px-6 py-8 mb-8 flex items-center justify-between gap-4"
+        style={{
+          background: "linear-gradient(135deg, oklch(0.488 0.243 264.376) 0%, oklch(0.4 0.22 285) 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div className="absolute right-0 top-0 w-56 h-56 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
+
         <div className="relative z-10">
-          <p className="text-white/60 text-xs font-medium uppercase tracking-widest mb-1">
+          <p className="text-white/50 text-[10px] font-semibold uppercase tracking-[0.15em] mb-1.5">
             Panel de estudiante
           </p>
-          <h1 className="text-2xl font-bold text-white">
-            Hola, {profile.full_name?.split(" ")[0] ?? "estudiante"}
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Hola, {profile.full_name?.split(" ")[0] ?? "estudiante"} 👋
           </h1>
-          <p className="text-white/65 text-sm mt-1">
+          <p className="text-white/60 text-sm mt-1.5">
             {applications?.length
               ? `${applications.length} solicitud${applications.length !== 1 ? "es" : ""} enviada${applications.length !== 1 ? "s" : ""}`
-              : "Explora necesidades y aplica"}
+              : "Explora necesidades y aplica al que más te interese"}
           </p>
         </div>
-        <div className="absolute right-0 top-0 w-48 h-48 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
         <Link href="/dashboard/profile" className="relative z-10 shrink-0">
           <Button
             size="sm"
@@ -234,13 +285,27 @@ async function StudentDashboard({
       {/* Stats */}
       {applications && applications.length > 0 && (
         <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-2xl font-bold text-amber-600">{pending}</p>
-            <p className="text-xs text-muted-foreground mt-1">Pendientes</p>
+          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
+            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-amber-500/30 via-amber-500 to-amber-500/30" />
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground font-medium">Pendientes</p>
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-amber-600">{pending}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">en revisión</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-2xl font-bold text-emerald-600">{accepted}</p>
-            <p className="text-xs text-muted-foreground mt-1">Aceptadas</p>
+          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
+            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-emerald-500/30 via-emerald-500 to-emerald-500/30" />
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground font-medium">Aceptadas</p>
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-emerald-600">{accepted}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">aprobadas</p>
           </div>
         </div>
       )}
@@ -248,10 +313,10 @@ async function StudentDashboard({
       {/* Applications list */}
       {applications && applications.length > 0 && (
         <>
-          <h2 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-widest">
+          <h2 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-widest">
             Mis solicitudes
           </h2>
-          <div className="space-y-2.5 mb-10">
+          <div className="space-y-2 mb-10">
             {applications.map((app) => {
               const need = app.needs as {
                 id: string;
@@ -266,13 +331,13 @@ async function StudentDashboard({
                 <Link
                   key={app.id}
                   href={`/needs/${need?.id}`}
-                  className="group flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:border-primary/25 hover:shadow-sm transition-all duration-200"
+                  className="group flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-px transition-all duration-200"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/15 flex items-center justify-center text-[11px] font-bold text-primary shrink-0 select-none">
+                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary/15 to-violet-500/10 border border-primary/15 flex items-center justify-center text-[11px] font-bold text-primary shrink-0 select-none">
                     {getInitials(need?.institutions?.name)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                    <p className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
                       {need?.title}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -282,11 +347,14 @@ async function StudentDashboard({
                       )}
                     </p>
                   </div>
-                  <span
-                    className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border ${appStatus.className}`}
-                  >
-                    {appStatus.label}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`text-xs font-medium px-2.5 py-1 rounded-full border ${appStatus.className}`}
+                    >
+                      {appStatus.label}
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  </div>
                 </Link>
               );
             })}
@@ -297,7 +365,7 @@ async function StudentDashboard({
       {/* Available needs */}
       {openNeeds && openNeeds.length > 0 && (
         <>
-          <h2 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-widest">
+          <h2 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-widest">
             Necesidades disponibles
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -308,9 +376,13 @@ async function StudentDashboard({
               ))}
           </div>
           {openNeeds.every((n) => appliedNeedIds.has(n.id)) && (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Ya aplicaste a todas las necesidades disponibles.
-            </p>
+            <div className="text-center py-10 border border-dashed border-border rounded-2xl bg-muted/20">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+              <p className="text-sm font-medium">¡Todo al día!</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Ya aplicaste a todas las necesidades disponibles.
+              </p>
+            </div>
           )}
         </>
       )}
