@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { login } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Building2, Handshake, Sparkles } from "lucide-react";
+import { GraduationCap, Building2, Handshake, Sparkles, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,9 +29,9 @@ export default function LoginPage() {
       <div
         className="hidden lg:flex lg:w-[52%] flex-col justify-between p-12 relative overflow-hidden"
         style={{
-          background: "linear-gradient(145deg, oklch(0.488 0.243 264.376) 0%, oklch(0.35 0.22 285) 100%)",
-        }}
-      >
+          background:
+            "linear-gradient(145deg, oklch(0.488 0.243 264.376) 0%, oklch(0.35 0.22 285) 100%)",
+        }}>
         {/* Grid overlay */}
         <div
           className="absolute inset-0 opacity-[0.08]"
@@ -50,7 +51,9 @@ export default function LoginPage() {
           </div>
           <div className="flex flex-col leading-none">
             <span className="text-white font-bold text-base">Community</span>
-            <span className="text-white/50 text-[9px] uppercase tracking-[0.12em] font-medium">UPTYAB</span>
+            <span className="text-white/50 text-[9px] uppercase tracking-[0.12em] font-medium">
+              UPTYAB
+            </span>
           </div>
         </Link>
 
@@ -63,15 +66,24 @@ export default function LoginPage() {
             El puente entre estudiantes e instituciones públicas
           </h2>
           <p className="text-white/60 text-sm leading-relaxed mb-10">
-            Conectamos talento estudiantil con necesidades reales. Sin costo, sin trámites.
+            Conectamos talento estudiantil con necesidades reales. Sin costo,
+            sin trámites.
           </p>
           <div className="space-y-3.5">
             {[
-              { icon: GraduationCap, text: "Estudiantes aplican a proyectos reales" },
-              { icon: Building2, text: "Instituciones reciben apoyo calificado" },
+              {
+                icon: GraduationCap,
+                text: "Estudiantes aplican a proyectos reales",
+              },
+              {
+                icon: Building2,
+                text: "Instituciones reciben apoyo calificado",
+              },
               { icon: Handshake, text: "La comunidad crece junta" },
             ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-3.5 text-white/75 text-sm">
+              <div
+                key={text}
+                className="flex items-center gap-3.5 text-white/75 text-sm">
                 <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
                   <Icon className="w-4 h-4 text-white" />
                 </div>
@@ -81,7 +93,9 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-white/30 text-xs relative z-10">© 2025 UPTYAB Community</p>
+        <p className="text-white/30 text-xs relative z-10">
+          © 2025 UPTYAB Community
+        </p>
       </div>
 
       {/* Right form panel */}
@@ -94,19 +108,23 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col leading-none">
               <span className="font-bold text-sm">Community</span>
-              <span className="text-[9px] text-muted-foreground uppercase tracking-[0.12em]">UPTYAB</span>
+              <span className="text-[9px] text-muted-foreground uppercase tracking-[0.12em]">
+                UPTYAB
+              </span>
             </div>
           </div>
 
           <div className="mb-8">
-            <h1 className="text-2xl font-bold tracking-tight">Bienvenido de vuelta</h1>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Bienvenido de vuelta
+            </h1>
             <p className="text-muted-foreground mt-1.5 text-sm">
               Inicia sesión para continuar en la plataforma
             </p>
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-1.5">
                 <label htmlFor="email" className="text-sm font-semibold">
                   Correo electrónico
@@ -118,7 +136,7 @@ export default function LoginPage() {
                   required
                   autoComplete="email"
                   placeholder="correo@ejemplo.com"
-                  className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                  className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
 
@@ -127,22 +145,25 @@ export default function LoginPage() {
                   <label htmlFor="password" className="text-sm font-semibold">
                     Contraseña
                   </label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </Link>
                 </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/4 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {error && (
@@ -155,9 +176,19 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button type="submit" className="w-full font-semibold shadow-sm shadow-primary/20 mt-1" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full font-semibold shadow-sm shadow-primary/20 mt-1"
+                disabled={loading}>
                 {loading ? "Entrando..." : "Iniciar sesión"}
               </Button>
+              <div className="w-full text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
             </form>
           </div>
 
@@ -165,8 +196,7 @@ export default function LoginPage() {
             ¿No tienes cuenta?{" "}
             <Link
               href="/register"
-              className="text-foreground font-semibold hover:text-primary transition-colors underline underline-offset-4"
-            >
+              className="text-foreground font-semibold hover:text-primary transition-colors underline underline-offset-4">
               Regístrate gratis
             </Link>
           </p>

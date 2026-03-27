@@ -49,14 +49,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             <div className="mb-8">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground text-[10px] font-bold">C</span>
-                </div>
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                  Community
-                </span>
-              </div>
+
               <h1 className="text-2xl font-bold">¿Olvidaste tu contraseña?</h1>
               <p className="text-muted-foreground mt-1 text-sm">
                 Ingresa tu correo y te enviamos un enlace para restablecerla.
@@ -64,7 +57,7 @@ export default function ForgotPasswordPage() {
             </div>
 
             <div className="rounded-xl border border-border bg-card p-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-1.5">
                   <label htmlFor="email" className="text-sm font-medium">
                     Correo electrónico
@@ -73,9 +66,10 @@ export default function ForgotPasswordPage() {
                     id="email"
                     name="email"
                     type="email"
+                    placeholder="correo@ejemplo.com"
                     required
                     autoComplete="email"
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full rounded-lg border border-input bg-background mt-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
 

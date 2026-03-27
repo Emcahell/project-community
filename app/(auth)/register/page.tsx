@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { register } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Building2, Handshake, Sparkles } from "lucide-react";
+import { GraduationCap, Building2, Handshake, Sparkles, Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -57,19 +58,20 @@ export default function RegisterPage() {
         <div className="relative z-10 max-w-sm">
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white/80 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
             <Sparkles className="w-3.5 h-3.5" />
-            Únete en segundos, sin costo
+            Únete en segundos, sin costo.
           </div>
           <h2 className="text-3xl font-bold text-white leading-tight mb-4 tracking-tight">
-            Únete a la plataforma de la UPTYAB
+            Únete a la plataforma que conecta estudiantes con comunidades.
           </h2>
           <p className="text-white/60 text-sm leading-relaxed mb-10">
-            Crea tu cuenta y empieza a conectarte con la comunidad. Sin costo, sin trámites complicados.
+            Crea tu cuenta y empieza a conectarte con la comunidad.
+            Ahorra tiempo valioso buscando comunidades.
           </p>
           <div className="space-y-3.5">
             {[
-              { icon: GraduationCap, text: "Si eres estudiante, aplica a proyectos reales" },
-              { icon: Building2, text: "Si eres institución, publica necesidades" },
-              { icon: Handshake, text: "Ambos construyen comunidad juntos" },
+              { icon: GraduationCap, text: "Si eres estudiante, aplica a proyectos reales." },
+              { icon: Building2, text: "Si eres institución, publica necesidades." },
+              { icon: Handshake, text: "Ambos construyen comunidad juntos." },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3.5 text-white/75 text-sm">
                 <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
@@ -106,7 +108,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-1.5">
                 <label htmlFor="full_name" className="text-sm font-semibold">
                   Nombre completo
@@ -118,7 +120,7 @@ export default function RegisterPage() {
                   required
                   autoComplete="name"
                   placeholder="Tu nombre completo"
-                  className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                  className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
 
@@ -133,7 +135,7 @@ export default function RegisterPage() {
                   required
                   autoComplete="email"
                   placeholder="correo@ejemplo.com"
-                  className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                  className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
 
@@ -141,21 +143,30 @@ export default function RegisterPage() {
                 <label htmlFor="password" className="text-sm font-semibold">
                   Contraseña
                 </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    placeholder="Mínimo 6 caracteres"
+                    className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/4 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold">Soy...</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 mt-2">
                   <label className="flex items-center gap-3 rounded-xl border border-input p-3.5 cursor-pointer has-checked:border-primary has-checked:bg-primary/5 transition-all hover:border-border/80">
                     <input
                       type="radio"
@@ -191,7 +202,7 @@ export default function RegisterPage() {
               )}
 
               <Button type="submit" className="w-full font-semibold shadow-sm shadow-primary/20 mt-1" disabled={loading}>
-                {loading ? "Creando cuenta..." : "Crear cuenta gratis"}
+                {loading ? "Creando cuenta..." : "Crear cuenta"}
               </Button>
             </form>
           </div>
