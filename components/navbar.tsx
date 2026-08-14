@@ -24,7 +24,7 @@ export async function Navbar() {
 
   return (
     <>
-      <header className="border-b border-border/60 bg-background/85 backdrop-blur-xl sticky top-0 z-10">
+      <header className="border-b border-border/60 bg-background/85 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3 group">
             <div className="w-8 h-8 rounded-xl bg-linear-to-br from-primary to-violet-600 flex items-center justify-center shrink-0 shadow-md shadow-primary/25 group-hover:shadow-primary/40 transition-shadow">

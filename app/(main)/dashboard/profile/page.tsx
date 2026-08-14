@@ -44,8 +44,8 @@ export default async function ProfilePage() {
       </Link>
 
       {/* Header */}
-      <div className="relative rounded-2xl overflow-hidden bg-primary px-6 py-7 mb-8 flex items-center gap-4">
-        <div className="relative z-10 w-14 h-14 rounded-2xl overflow-hidden shrink-0">
+      <div className="rounded-2xl border border-border bg-card px-6 py-6 mb-8 flex items-center gap-4">
+        <div className="relative w-14 h-14 rounded-2xl overflow-hidden shrink-0 ring-1 ring-border">
           {profile.avatar_url ? (
             <Image
               src={profile.avatar_url}
@@ -55,35 +55,38 @@ export default async function ProfilePage() {
               unoptimized
             />
           ) : (
-            <div className="w-full h-full bg-white/20 flex items-center justify-center text-xl font-bold text-white select-none">
+            <div className="w-full h-full bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground select-none">
               {getInitials(profile.full_name)}
             </div>
           )}
         </div>
-        <div className="relative z-10">
-          <p className="text-white font-bold text-lg leading-tight">
+        <div className="min-w-0">
+          <p className="font-bold text-lg leading-tight truncate">
             {profile.full_name ?? "Sin nombre"}
           </p>
-          <div className="flex items-center gap-1.5 mt-1 text-white/70 text-xs">
+          <div className="flex items-center gap-1.5 mt-1 text-muted-foreground text-xs">
             {isInstitution ? (
               <>
-                <Building2 className="w-3.5 h-3.5" />
-                Institución · {institution?.name ?? "Sin configurar"}
+                <Building2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">
+                  Institución · {institution?.name ?? "Sin configurar"}
+                </span>
                 {institution?.verified && (
-                  <BadgeCheck className="w-3.5 h-3.5 text-sky-300" />
+                  <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                 )}
               </>
             ) : (
               <>
-                <GraduationCap className="w-3.5 h-3.5" />
-                Estudiante UPTYAB
-                {profile.career && <> · {profile.career}</>}
-                {profile.semester && <> · Sem. {profile.semester}</>}
+                <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">
+                  Estudiante UPTYAB
+                  {profile.career && <> · {profile.career}</>}
+                  {profile.semester && <> · Sem. {profile.semester}</>}
+                </span>
               </>
             )}
           </div>
         </div>
-        <div className="absolute right-0 top-0 w-48 h-48 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
       </div>
 
       <ProfileForm profile={profile} institution={institution} />

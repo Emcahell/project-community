@@ -8,7 +8,7 @@ import { NeedCard } from "@/components/need-card";
 import { APPLICATION_STATUS } from "@/lib/constants";
 import { InstitutionNeedsList } from "./institution-needs-list";
 import { InstitutionSetupForm } from "./institution/setup/institution-setup-form";
-import { Plus, Settings, FileText, CheckCircle2, Clock, TrendingUp, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -102,98 +102,45 @@ async function InstitutionDashboard({
     .order("created_at", { ascending: false });
 
   const totalNeeds = needs?.length ?? 0;
-  const totalPending =
+  const countApps = (status: string) =>
     needs?.reduce((acc, n) => {
       const apps = n.applications as { status: string }[];
-      return acc + apps.filter((a) => a.status === "pending").length;
+      return acc + apps.filter((a) => a.status === status).length;
     }, 0) ?? 0;
-  const openNeeds = needs?.filter((n) => n.status === "open").length ?? 0;
+  const totalPending = countApps("pending");
+  const totalApproved = countApps("accepted");
 
   return (
     <div>
       {/* Header banner */}
-      <div
-        className="relative rounded-2xl overflow-hidden px-6 py-8 mb-8 flex items-center justify-between gap-4"
-        style={{
-          background: "linear-gradient(135deg, oklch(0.488 0.243 264.376) 0%, oklch(0.4 0.22 285) 100%)",
-        }}
-      >
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="absolute right-0 top-0 w-56 h-56 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
-
-        <div className="relative z-10">
-          <p className="text-white/50 text-[10px] font-semibold uppercase tracking-[0.15em] mb-1.5">
+      <div className="rounded-2xl border border-border bg-card px-6 py-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-1.5">
             Panel de institución
           </p>
-          <h1 className="text-2xl font-bold text-white tracking-tight">{institution.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            {institution.name}
+          </h1>
         </div>
-        <div className="relative z-10 flex items-center gap-2 shrink-0">
-          <Link href="/dashboard/profile">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-white/70 hover:text-white hover:bg-white/10"
-            >
-              <Settings className="w-4 h-4" />
-            </Button>
-          </Link>
-          <Link href="/dashboard/needs/new">
-            <Button
-              size="sm"
-              className="bg-white text-primary hover:bg-white/90 font-semibold shadow-lg shadow-black/10"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Publicar
-            </Button>
-          </Link>
+        <div className="grid grid-cols-3 gap-2 shrink-0 w-full sm:w-auto">
+          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
+            <p className="text-lg font-bold tracking-tight">{totalNeeds}</p>
+            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Total</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
+            <p className="text-lg font-bold tracking-tight text-amber-600">
+              {totalPending}
+            </p>
+            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Pendientes</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
+            <p className="text-lg font-bold tracking-tight text-emerald-600">
+              {totalApproved}
+            </p>
+            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Aprobadas</p>
+          </div>
         </div>
       </div>
-
-      {/* Stats */}
-      {totalNeeds > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
-            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-primary/30 via-primary to-primary/30" />
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground font-medium">Total</p>
-              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText className="w-3.5 h-3.5 text-primary" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold tracking-tight">{totalNeeds}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">necesidades</p>
-          </div>
-          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
-            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-emerald-500/30 via-emerald-500 to-emerald-500/30" />
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground font-medium">Abiertas</p>
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold tracking-tight text-emerald-600">{openNeeds}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">activas</p>
-          </div>
-          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
-            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-amber-500/30 via-amber-500 to-amber-500/30" />
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground font-medium">Pendientes</p>
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold tracking-tight text-amber-600">{totalPending}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">solicitudes</p>
-          </div>
-        </div>
-      )}
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
@@ -251,76 +198,40 @@ async function StudentDashboard({
   const accepted =
     applications?.filter((a) => a.status === "accepted").length ?? 0;
 
+  const totalApplications = applications?.length ?? 0;
+
   return (
     <div>
       {/* Header banner */}
-      <div
-        className="relative rounded-2xl overflow-hidden px-6 py-8 mb-8 flex items-center justify-between gap-4"
-        style={{
-          background: "linear-gradient(135deg, oklch(0.488 0.243 264.376) 0%, oklch(0.4 0.22 285) 100%)",
-        }}
-      >
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="absolute right-0 top-0 w-56 h-56 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4 pointer-events-none" />
-
-        <div className="relative z-10">
-          <p className="text-white/50 text-[10px] font-semibold uppercase tracking-[0.15em] mb-1.5">
+      <div className="rounded-2xl border border-border bg-card px-6 py-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-1.5">
             Panel de estudiante
           </p>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
             Hola, {profile.full_name?.split(" ")[0] ?? "estudiante"} 👋
           </h1>
-          <p className="text-white/60 text-sm mt-1.5">
-            {applications?.length
-              ? `${applications.length} solicitud${applications.length !== 1 ? "es" : ""} enviada${applications.length !== 1 ? "s" : ""}`
+          <p className="text-muted-foreground text-sm mt-1.5">
+            {totalApplications
+              ? `${totalApplications} solicitud${totalApplications !== 1 ? "es" : ""} enviada${totalApplications !== 1 ? "s" : ""}`
               : "Explora necesidades y aplica al que más te interese"}
           </p>
         </div>
-        <Link href="/dashboard/profile" className="relative z-10 shrink-0">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-white/70 hover:text-white hover:bg-white/10"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
-        </Link>
-      </div>
-
-      {/* Stats */}
-      {applications && applications.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
-            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-amber-500/30 via-amber-500 to-amber-500/30" />
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground font-medium">Pendientes</p>
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold tracking-tight text-amber-600">{pending}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">en revisión</p>
+        <div className="grid grid-cols-3 gap-2 shrink-0 w-full sm:w-auto">
+          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
+            <p className="text-lg font-bold tracking-tight">{totalApplications}</p>
+            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Total</p>
           </div>
-          <div className="relative rounded-2xl border border-border bg-card overflow-hidden p-5">
-            <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-emerald-500/30 via-emerald-500 to-emerald-500/30" />
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground font-medium">Aceptadas</p>
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold tracking-tight text-emerald-600">{accepted}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">aprobadas</p>
+          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
+            <p className="text-lg font-bold tracking-tight text-amber-600">{pending}</p>
+            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Pendientes</p>
+          </div>
+          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
+            <p className="text-lg font-bold tracking-tight text-emerald-600">{accepted}</p>
+            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Aceptadas</p>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Applications list */}
       {applications && applications.length > 0 && (
