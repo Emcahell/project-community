@@ -2,24 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { login } from "@/app/actions/auth";
+import { loginSchema, type LoginValues } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, Building2, Handshake, Sparkles, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const formData = new FormData(e.currentTarget);
-    const result = await login(formData);
+  async function onSubmit(values: LoginValues) {
+    const result = await login(values);
     if (result?.error) {
-      setError(result.error);
-      setLoading(false);
+      setError("root", { message: result.error });
     }
   }
 
@@ -124,20 +129,24 @@ export default function LoginPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-1.5">
                 <label htmlFor="email" className="text-sm font-semibold">
                   Correo electrónico
                 </label>
                 <input
                   id="email"
-                  name="email"
                   type="email"
-                  required
                   autoComplete="email"
                   placeholder="correo@ejemplo.com"
+                  {...register("email")}
                   className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 />
+                {errors.email && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.email.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -149,11 +158,10 @@ export default function LoginPage() {
                 <div className="relative">
                   <input
                     id="password"
-                    name="password"
                     type={showPassword ? "text" : "password"}
-                    required
                     autoComplete="current-password"
                     placeholder="••••••••"
+                    {...register("password")}
                     className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
                   />
                   <button
@@ -166,21 +174,25 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {error && (
+              {errors.root && (
                 <div className="rounded-xl bg-destructive/8 border border-destructive/20 px-3.5 py-2.5">
                   <p className="text-sm text-destructive font-medium">
-                    {error === "Invalid login credentials"
-                      ? "Correo o contraseña incorrectos"
-                      : error}
+                    {errors.root.message}
                   </p>
                 </div>
+              )}
+
+              {errors.password && (
+                <p className="text-xs text-destructive">
+                  {errors.password.message}
+                </p>
               )}
 
               <Button
                 type="submit"
                 className="w-full font-semibold shadow-sm shadow-primary/20 mt-1"
-                disabled={loading}>
-                {loading ? "Entrando..." : "Iniciar sesión"}
+                disabled={isSubmitting}>
+                {isSubmitting ? "Entrando..." : "Iniciar sesión"}
               </Button>
               <div className="w-full text-right">
                 <Link

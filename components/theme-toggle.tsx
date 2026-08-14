@@ -8,6 +8,7 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- patrón requerido por next-themes para evitar mismatch de hidratación
   useEffect(() => setMounted(true), []);
   if (!mounted) return <div className="w-7 h-7" />;
 

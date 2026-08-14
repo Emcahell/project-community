@@ -1,39 +1,33 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase/client";
+import {
+  needSchema,
+  MAX_DESCRIPTION,
+  type NeedValues,
+} from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
-const MAX_DESCRIPTION = 1500;
-
 export default function NewNeedPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [description, setDescription] = useState("");
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<NeedValues>({
+    resolver: zodResolver(needSchema),
+    defaultValues: { title: "", description: "" },
+  });
+  const description = watch("description");
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const formData = new FormData(e.currentTarget);
-    const title = (formData.get("title") as string)?.trim();
-
-    if (!title || title.length < 5) {
-      setError("El título debe tener al menos 5 caracteres.");
-      setLoading(false);
-      return;
-    }
-    if (description.trim().length < 20) {
-      setError("La descripción debe tener al menos 20 caracteres.");
-      setLoading(false);
-      return;
-    }
-
+  async function onSubmit(values: NeedValues) {
     const supabase = createClient();
 
     const {
@@ -48,24 +42,25 @@ export default function NewNeedPage() {
       .single();
 
     if (!institution) {
-      setError("No se encontró tu institución.");
-      setLoading(false);
+      setError("root", { message: "No se encontró tu institución." });
       return;
     }
 
     const { error } = await supabase.from("needs").insert({
       institution_id: institution.id,
-      title,
-      description: description.trim(),
+      title: values.title,
+      description: values.description,
     });
 
     if (error) {
-      setError("Ocurrió un error al publicar la necesidad.");
-      setLoading(false);
-    } else {
-      router.push("/dashboard");
-      router.refresh();
+      setError("root", {
+        message: "Ocurrió un error al publicar la necesidad.",
+      });
+      return;
     }
+
+    router.push("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -85,18 +80,20 @@ export default function NewNeedPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="space-y-1.5">
           <label className="text-sm font-medium">
             Título <span className="text-destructive">*</span>
           </label>
           <input
-            name="title"
             type="text"
-            required
             placeholder="Ej: Sistema de gestión de inventario"
+            {...register("title")}
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
+          {errors.title && (
+            <p className="text-xs text-destructive">{errors.title.message}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -115,25 +112,28 @@ export default function NewNeedPage() {
             </span>
           </div>
           <textarea
-            name="description"
             rows={7}
-            required
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            maxLength={MAX_DESCRIPTION}
             placeholder="Describe en detalle la necesidad tecnológica, qué problema resuelve, qué funcionalidades se necesitan..."
+            {...register("description")}
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
           />
+          {errors.description && (
+            <p className="text-xs text-destructive">
+              {errors.description.message}
+            </p>
+          )}
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {errors.root && (
+          <p className="text-sm text-destructive">{errors.root.message}</p>
+        )}
 
         <div className="flex gap-2 pt-1">
           <Button
             type="submit"
-            disabled={loading || description.length > MAX_DESCRIPTION}
+            disabled={isSubmitting || description.length > MAX_DESCRIPTION}
           >
-            {loading ? "Publicando..." : "Publicar necesidad"}
+            {isSubmitting ? "Publicando..." : "Publicar necesidad"}
           </Button>
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancelar

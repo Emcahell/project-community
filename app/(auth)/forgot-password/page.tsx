@@ -2,27 +2,32 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPassword } from "@/app/actions/auth";
+import { forgotPasswordSchema, type ForgotPasswordValues } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MailCheck } from "lucide-react";
 
 export default function ForgotPasswordPage() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<ForgotPasswordValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
+  });
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const formData = new FormData(e.currentTarget);
-    const result = await resetPassword(formData);
+  async function onSubmit(values: ForgotPasswordValues) {
+    const result = await resetPassword(values);
     if (result?.error) {
-      setError(result.error);
+      setError("root", { message: result.error });
     } else {
       setSent(true);
     }
-    setLoading(false);
   }
 
   return (
@@ -57,26 +62,32 @@ export default function ForgotPasswordPage() {
             </div>
 
             <div className="rounded-xl border border-border bg-card p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-1.5">
                   <label htmlFor="email" className="text-sm font-medium">
                     Correo electrónico
                   </label>
                   <input
                     id="email"
-                    name="email"
                     type="email"
                     placeholder="correo@ejemplo.com"
-                    required
                     autoComplete="email"
+                    {...register("email")}
                     className="w-full rounded-lg border border-input bg-background mt-2 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                   />
+                  {errors.email && (
+                    <p className="text-xs text-destructive mt-1">
+                      {errors.email.message}
+                    </p>
+                  )}
                 </div>
 
-                {error && <p className="text-sm text-destructive">{error}</p>}
+                {errors.root && (
+                  <p className="text-sm text-destructive">{errors.root.message}</p>
+                )}
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Enviando..." : "Enviar enlace"}
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Enviando..." : "Enviar enlace"}
                 </Button>
               </form>
             </div>

@@ -2,26 +2,40 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { register } from "@/app/actions/auth";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { register as registerAction } from "@/app/actions/auth";
+import { registerSchema, type RegisterValues } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, Building2, Handshake, Sparkles, Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [role, setRole] = useState<"student" | "institution">("student");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      role: "student",
+      first_name: "",
+      last_name: "",
+      institution_name: "",
+      email: "",
+      password: "",
+      confirm_password: "",
+    },
+  });
+  const role = watch("role");
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const formData = new FormData(e.currentTarget);
-    const result = await register(formData);
+  async function onSubmit(values: RegisterValues) {
+    const result = await registerAction(values);
     if (result?.error) {
-      setError(result.error);
-      setLoading(false);
+      setError("root", { message: result.error });
     }
   }
 
@@ -110,28 +124,36 @@ export default function RegisterPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {role === "student" ? (
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold">Nombre completo</label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <input
-                      name="first_name"
                       type="text"
-                      required
                       autoComplete="given-name"
                       placeholder="Primer nombre"
+                      {...register("first_name")}
                       className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                     />
                     <input
-                      name="last_name"
                       type="text"
-                      required
                       autoComplete="family-name"
                       placeholder="Primer apellido"
+                      {...register("last_name")}
                       className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                     />
                   </div>
+                  {errors.first_name && (
+                    <p className="text-xs text-destructive mt-1">
+                      {errors.first_name.message}
+                    </p>
+                  )}
+                  {errors.last_name && (
+                    <p className="text-xs text-destructive mt-1">
+                      {errors.last_name.message}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-1.5">
@@ -140,13 +162,17 @@ export default function RegisterPage() {
                   </label>
                   <input
                     id="institution_name"
-                    name="institution_name"
                     type="text"
-                    required
                     autoComplete="organization"
                     placeholder="Ej. Alcaldía del municipio"
+                    {...register("institution_name")}
                     className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                   />
+                  {errors.institution_name && (
+                    <p className="text-xs text-destructive mt-1">
+                      {errors.institution_name.message}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -156,13 +182,17 @@ export default function RegisterPage() {
                 </label>
                 <input
                   id="email"
-                  name="email"
                   type="email"
-                  required
                   autoComplete="email"
                   placeholder="correo@ejemplo.com"
+                  {...register("email")}
                   className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 />
+                {errors.email && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.email.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -172,12 +202,10 @@ export default function RegisterPage() {
                 <div className="relative">
                   <input
                     id="password"
-                    name="password"
                     type={showPassword ? "text" : "password"}
-                    required
-                    minLength={6}
                     autoComplete="new-password"
                     placeholder="Mínimo 6 caracteres"
+                    {...register("password")}
                     className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
                   />
                   <button
@@ -197,12 +225,10 @@ export default function RegisterPage() {
                 <div className="relative">
                   <input
                     id="confirm_password"
-                    name="confirm_password"
                     type={showConfirmPassword ? "text" : "password"}
-                    required
-                    minLength={6}
                     autoComplete="new-password"
                     placeholder="Repite la contraseña"
+                    {...register("confirm_password")}
                     className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
                   />
                   <button
@@ -221,10 +247,8 @@ export default function RegisterPage() {
                   <label className="flex items-center gap-3 rounded-xl border border-input p-3.5 cursor-pointer has-checked:border-primary has-checked:bg-primary/5 transition-all hover:border-border/80">
                     <input
                       type="radio"
-                      name="role"
                       value="student"
-                      checked={role === "student"}
-                      onChange={() => setRole("student")}
+                      {...register("role")}
                       className="accent-primary"
                     />
                     <div>
@@ -235,10 +259,8 @@ export default function RegisterPage() {
                   <label className="flex items-center gap-3 rounded-xl border border-input p-3.5 cursor-pointer has-checked:border-primary has-checked:bg-primary/5 transition-all hover:border-border/80">
                     <input
                       type="radio"
-                      name="role"
                       value="institution"
-                      checked={role === "institution"}
-                      onChange={() => setRole("institution")}
+                      {...register("role")}
                       className="accent-primary"
                     />
                     <div>
@@ -249,14 +271,24 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {error && (
+              {errors.root && (
                 <div className="rounded-xl bg-destructive/8 border border-destructive/20 px-3.5 py-2.5">
-                  <p className="text-sm text-destructive font-medium">{error}</p>
+                  <p className="text-sm text-destructive font-medium">
+                    {errors.root.message}
+                  </p>
                 </div>
               )}
+              {errors.password && (
+                <p className="text-xs text-destructive">{errors.password.message}</p>
+              )}
+              {errors.confirm_password && (
+                <p className="text-xs text-destructive">
+                  {errors.confirm_password.message}
+                </p>
+              )}
 
-              <Button type="submit" className="w-full font-semibold shadow-sm shadow-primary/20 mt-1" disabled={loading}>
-                {loading ? "Creando cuenta..." : "Crear cuenta"}
+              <Button type="submit" className="w-full font-semibold shadow-sm shadow-primary/20 mt-1" disabled={isSubmitting}>
+                {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
               </Button>
             </form>
           </div>

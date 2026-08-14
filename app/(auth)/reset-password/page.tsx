@@ -1,23 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { updatePassword } from "@/app/actions/auth";
+import { resetPasswordSchema, type ResetPasswordValues } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 
 export default function ResetPasswordPage() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<ResetPasswordValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { password: "", confirm: "" },
+  });
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const formData = new FormData(e.currentTarget);
-    const result = await updatePassword(formData);
+  async function onSubmit(values: ResetPasswordValues) {
+    const result = await updatePassword(values);
     if (result?.error) {
-      setError(result.error);
-      setLoading(false);
+      setError("root", { message: result.error });
     }
   }
 
@@ -40,21 +44,22 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="password" className="text-sm font-medium">
                 Nueva contraseña
               </label>
               <input
                 id="password"
-                name="password"
                 type="password"
-                required
-                minLength={6}
                 autoComplete="new-password"
+                {...register("password")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
               <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
+              {errors.password && (
+                <p className="text-xs text-destructive">{errors.password.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -63,19 +68,22 @@ export default function ResetPasswordPage() {
               </label>
               <input
                 id="confirm"
-                name="confirm"
                 type="password"
-                required
-                minLength={6}
                 autoComplete="new-password"
+                {...register("confirm")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
+              {errors.confirm && (
+                <p className="text-xs text-destructive">{errors.confirm.message}</p>
+              )}
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {errors.root && (
+              <p className="text-sm text-destructive">{errors.root.message}</p>
+            )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Guardando..." : "Actualizar contraseña"}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : "Actualizar contraseña"}
             </Button>
           </form>
         </div>

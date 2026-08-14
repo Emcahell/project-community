@@ -2,24 +2,27 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import {
+  loginSchema,
+  registerSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  type LoginValues,
+  type RegisterValues,
+  type ForgotPasswordValues,
+  type ResetPasswordValues,
+} from "@/lib/validations";
 
-function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-export async function login(formData: FormData) {
-  const email = (formData.get("email") as string)?.trim();
-  const password = formData.get("password") as string;
-
-  if (!email || !validateEmail(email)) {
-    return { error: "Ingresa un correo electrónico válido." };
-  }
-  if (!password) {
-    return { error: "La contraseña es requerida." };
-  }
+export async function login(values: LoginValues) {
+  const parsed = loginSchema.safeParse(values);
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
 
   const supabase = await createClient();
-  const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: authData, error } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
 
   if (error) {
     if (error.message === "Invalid login credentials") {
@@ -32,44 +35,18 @@ export async function login(formData: FormData) {
   redirect(role === "admin" ? "/admin" : "/dashboard");
 }
 
-export async function register(formData: FormData) {
-  const email = (formData.get("email") as string)?.trim();
-  const password = formData.get("password") as string;
-  const confirmPassword = formData.get("confirm_password") as string;
-  const role = formData.get("role") as string;
-  const firstName = (formData.get("first_name") as string)?.trim();
-  const lastName = (formData.get("last_name") as string)?.trim();
-  const institutionName = (formData.get("institution_name") as string)?.trim();
+export async function register(values: RegisterValues) {
+  const parsed = registerSchema.safeParse(values);
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
 
-  if (!["student", "institution"].includes(role)) {
-    return { error: "Selecciona un tipo de cuenta válido." };
-  }
+  const { role, email, password, first_name, last_name, institution_name } =
+    parsed.data;
 
   const fullName =
     role === "institution"
-      ? institutionName
-      : `${firstName} ${lastName}`.trim();
-
-  if (role === "student" && (!firstName || !lastName)) {
-    return { error: "Ingresa tu primer nombre y primer apellido." };
-  }
-  if (!fullName || fullName.length < 2) {
-    return {
-      error:
-        role === "institution"
-          ? "Ingresa el nombre de la institución (mínimo 2 caracteres)."
-          : "Ingresa tu nombre completo (mínimo 2 caracteres).",
-    };
-  }
-  if (!email || !validateEmail(email)) {
-    return { error: "Ingresa un correo electrónico válido." };
-  }
-  if (!password || password.length < 6) {
-    return { error: "La contraseña debe tener al menos 6 caracteres." };
-  }
-  if (!confirmPassword || password !== confirmPassword) {
-    return { error: "Las contraseñas no coinciden." };
-  }
+      ? institution_name
+      : `${first_name} ${last_name}`.trim();
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
@@ -79,8 +56,8 @@ export async function register(formData: FormData) {
       data: {
         full_name: fullName,
         // Para estudiantes se guardan separados; para instituciones quedan null
-        first_name: role === "student" ? firstName : null,
-        last_name: role === "student" ? lastName : null,
+        first_name: role === "student" ? first_name : null,
+        last_name: role === "student" ? last_name : null,
         role,
       },
     },
@@ -97,37 +74,34 @@ export async function logout() {
   redirect("/login");
 }
 
-export async function resetPassword(formData: FormData) {
-  const email = (formData.get("email") as string)?.trim();
-
-  if (!email || !validateEmail(email)) {
-    return { error: "Ingresa un correo electrónico válido." };
-  }
+export async function resetPassword(values: ForgotPasswordValues) {
+  const parsed = forgotPasswordSchema.safeParse(values);
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
 
   const supabase = await createClient();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
-  });
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    parsed.data.email,
+    {
+      redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
+    },
+  );
 
   if (error) return { error: error.message };
 
   return { success: true };
 }
 
-export async function updatePassword(formData: FormData) {
-  const password = formData.get("password") as string;
-  const confirm = formData.get("confirm") as string;
-
-  if (!password || password.length < 6) {
-    return { error: "La contraseña debe tener al menos 6 caracteres." };
-  }
-  if (password !== confirm) {
-    return { error: "Las contraseñas no coinciden." };
-  }
+export async function updatePassword(values: ResetPasswordValues) {
+  const parsed = resetPasswordSchema.safeParse(values);
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
 
   if (error) return { error: error.message };
 

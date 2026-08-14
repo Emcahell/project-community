@@ -1,8 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import { updateStudentProfile, updateInstitutionProfile } from "@/app/actions/profile";
+import {
+  updateStudentProfile,
+  updateInstitutionProfile,
+} from "@/app/actions/profile";
+import {
+  studentProfileSchema,
+  institutionProfileSchema,
+  MAX_AVATAR_SIZE,
+  MAX_CV_SIZE,
+  type StudentProfileValues,
+  type InstitutionProfileValues,
+} from "@/lib/validations";
 import { Upload, FileText, X, Camera } from "lucide-react";
 import Image from "next/image";
 import { getInitials } from "@/lib/utils";
@@ -26,6 +40,8 @@ type Institution = {
   website: string | null;
 } | null;
 
+type ProfileFormData = StudentProfileValues & InstitutionProfileValues;
+
 export function ProfileForm({
   profile,
   institution,
@@ -33,15 +49,20 @@ export function ProfileForm({
   profile: Profile;
   institution: Institution;
 }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(profile.avatar_url);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(
+    profile.avatar_url
+  );
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [cvFileName, setCvFileName] = useState<string | null>(
     profile.cv_url ? "CV actual" : null
   );
+  const [cvFile, setCvFile] = useState<File | null>(null);
   const cvInputRef = useRef<HTMLInputElement>(null);
 
   // Para estudiantes, si aún no hay first_name/last_name (migración pendiente),
@@ -52,6 +73,35 @@ export function ProfileForm({
     profile.last_name ??
     profile.full_name?.split(" ").slice(1).join(" ") ??
     "";
+
+  const schema =
+    profile.role === "institution"
+      ? institutionProfileSchema
+      : studentProfileSchema;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ProfileFormData>({
+    resolver: zodResolver(schema) as unknown as Resolver<ProfileFormData>,
+    defaultValues:
+      profile.role === "institution"
+        ? {
+            full_name: profile.full_name ?? "",
+            name: institution?.name ?? "",
+            description: institution?.description ?? "",
+            address: institution?.address ?? "",
+            phone: institution?.phone ?? "",
+            website: institution?.website ?? "",
+          }
+        : {
+            first_name: initialFirstName,
+            last_name: initialLastName,
+            career: profile.career ?? "",
+            semester: profile.semester ? String(profile.semester) : "",
+          },
+  });
 
   // Warn on browser close/refresh when unsaved changes
   useEffect(() => {
@@ -67,88 +117,109 @@ export function ProfileForm({
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_AVATAR_SIZE) {
+      toast.error("El logo no puede superar 4 MB.");
+      e.target.value = "";
+      return;
+    }
+    setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
     setIsDirty(true);
   }
 
   function handleCvChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) {
-      setCvFileName(file.name);
-      setIsDirty(true);
+    if (!file) return;
+    if (file.size > MAX_CV_SIZE) {
+      toast.error("El CV no puede superar 4 MB.");
+      e.target.value = "";
+      return;
     }
+    if (file.type !== "application/pdf") {
+      toast.error("El CV debe ser un archivo PDF.");
+      e.target.value = "";
+      return;
+    }
+    setCvFile(file);
+    setCvFileName(file.name);
+    setIsDirty(true);
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function onSubmit(values: ProfileFormData) {
     setLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const action =
+    const result =
       profile.role === "institution"
-        ? updateInstitutionProfile
-        : updateStudentProfile;
+        ? await updateInstitutionProfile(values, avatarFile)
+        : await updateStudentProfile(values, cvFile);
 
-    const result = await action(formData);
     if (result?.error) {
       toast.error(result.error);
     } else {
       toast.success("Cambios guardados correctamente.");
       setIsDirty(false);
+      // Refresca los server components (navbar, header de perfil) para
+      // mostrar el logo nuevo de inmediato
+      router.refresh();
     }
     setLoading(false);
   }
 
   return (
-    <form onSubmit={handleSubmit} onChange={() => setIsDirty(true)} className="space-y-6">
-      {/* Avatar */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-sm font-semibold mb-4">Foto de perfil</h2>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => avatarInputRef.current?.click()}
-            className="relative w-16 h-16 rounded-2xl overflow-hidden shrink-0 group cursor-pointer"
-          >
-            {avatarPreview ? (
-              <Image
-                src={avatarPreview}
-                alt="Avatar"
-                fill
-                className="object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="w-full h-full bg-primary/10 border border-primary/20 flex items-center justify-center text-lg font-bold text-primary select-none">
-                {getInitials(profile.full_name)}
-              </div>
-            )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <Camera className="w-5 h-5 text-white" />
-            </div>
-          </button>
-          <div>
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      onChange={() => setIsDirty(true)}
+      className="space-y-6"
+    >
+      {/* Logo (solo instituciones) */}
+      {profile.role === "institution" && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold mb-4">Logo de la institución</h2>
+          <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={() => avatarInputRef.current?.click()}
-              className="text-sm font-medium text-primary hover:underline"
+              className="relative w-16 h-16 rounded-2xl overflow-hidden shrink-0 group cursor-pointer"
             >
-              Cambiar foto
+              {avatarPreview ? (
+                <Image
+                  src={avatarPreview}
+                  alt="Logo"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full bg-primary/10 border border-primary/20 flex items-center justify-center text-lg font-bold text-primary select-none">
+                  {getInitials(profile.full_name)}
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="w-5 h-5 text-white" />
+              </div>
             </button>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              JPG, PNG o WebP · Máx. 2 MB
-            </p>
+            <div>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Cambiar logo
+              </button>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                JPG, PNG o WebP · Máx. 4 MB
+              </p>
+            </div>
+            <input
+              ref={avatarInputRef}
+              name="avatar"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
-          <input
-            ref={avatarInputRef}
-            name="avatar"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
-            onChange={handleAvatarChange}
-          />
         </div>
-      </div>
+      )}
 
       {/* Personal data */}
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -159,34 +230,43 @@ export function ProfileForm({
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Primer nombre</label>
               <input
-                name="first_name"
                 type="text"
-                required
-                defaultValue={initialFirstName}
+                {...register("first_name")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
+              {errors.first_name && (
+                <p className="text-xs text-destructive">
+                  {errors.first_name.message}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Primer apellido</label>
               <input
-                name="last_name"
                 type="text"
-                required
-                defaultValue={initialLastName}
+                {...register("last_name")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
+              {errors.last_name && (
+                <p className="text-xs text-destructive">
+                  {errors.last_name.message}
+                </p>
+              )}
             </div>
           </div>
         ) : (
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Nombre completo</label>
             <input
-              name="full_name"
               type="text"
-              required
-              defaultValue={profile.full_name ?? ""}
+              {...register("full_name")}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
+            {errors.full_name && (
+              <p className="text-xs text-destructive">
+                {errors.full_name.message}
+              </p>
+            )}
           </div>
         )}
 
@@ -195,24 +275,27 @@ export function ProfileForm({
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Carrera</label>
               <input
-                name="career"
                 type="text"
                 placeholder="Ej. Ingeniería en Sistemas"
-                defaultValue={profile.career ?? ""}
+                {...register("career")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Semestre</label>
               <input
-                name="semester"
                 type="number"
                 min={1}
                 max={12}
                 placeholder="1–12"
-                defaultValue={profile.semester ?? ""}
+                {...register("semester")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
+              {errors.semester && (
+                <p className="text-xs text-destructive">
+                  {errors.semester.message}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -248,7 +331,9 @@ export function ProfileForm({
                   type="button"
                   onClick={() => {
                     setCvFileName(null);
+                    setCvFile(null);
                     if (cvInputRef.current) cvInputRef.current.value = "";
+                    setIsDirty(true);
                   }}
                   className="ml-auto shrink-0"
                 >
@@ -273,7 +358,7 @@ export function ProfileForm({
               onChange={handleCvChange}
             />
           </div>
-          <p className="text-xs text-muted-foreground">Solo PDF · Máx. 5 MB</p>
+          <p className="text-xs text-muted-foreground">Solo PDF · Máx. 4 MB</p>
         </div>
       )}
 
@@ -287,21 +372,21 @@ export function ProfileForm({
               Nombre de la institución <span className="text-destructive">*</span>
             </label>
             <input
-              name="name"
               type="text"
-              required
-              defaultValue={institution?.name ?? ""}
+              {...register("name")}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name.message}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Descripción</label>
             <textarea
-              name="description"
               rows={3}
-              defaultValue={institution?.description ?? ""}
               placeholder="Breve descripción de la institución..."
+              {...register("description")}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
             />
           </div>
@@ -310,18 +395,17 @@ export function ProfileForm({
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Dirección</label>
               <input
-                name="address"
                 type="text"
-                defaultValue={institution?.address ?? ""}
+                {...register("address")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Teléfono</label>
               <input
-                name="phone"
-                type="tel"
-                defaultValue={institution?.phone ?? ""}
+                type="text"
+                placeholder="Teléfono o correo de contacto"
+                {...register("phone")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -330,12 +414,14 @@ export function ProfileForm({
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Sitio web</label>
             <input
-              name="website"
               type="url"
               placeholder="https://..."
-              defaultValue={institution?.website ?? ""}
+              {...register("website")}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
+            {errors.website && (
+              <p className="text-xs text-destructive">{errors.website.message}</p>
+            )}
           </div>
         </div>
       )}

@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import {
+  applicationSchema,
+  MAX_APPLICATION_MESSAGE,
+  type ApplicationValues,
+} from "@/lib/validations";
 import { CheckCircle2 } from "lucide-react";
-
-const MAX_CHARS = 500;
 
 export function ApplyButton({
   needId,
@@ -24,9 +29,18 @@ export function ApplyButton({
 }) {
   const [loading, setLoading] = useState(false);
   const [applied, setApplied] = useState(alreadyApplied);
-  const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<ApplicationValues>({
+    resolver: zodResolver(applicationSchema),
+    defaultValues: { message: "" },
+  });
+  const message = watch("message");
 
   if (!user) {
     return (
@@ -57,14 +71,14 @@ export function ApplyButton({
     );
   }
 
-  async function handleApply() {
+  async function handleApply(values: ApplicationValues) {
     setLoading(true);
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.from("applications").insert({
       need_id: needId,
       student_id: user!.id,
-      message: message.trim() || null,
+      message: values.message.trim() || null,
     });
     if (error) {
       if (error.code === "23505") {
@@ -95,26 +109,29 @@ export function ApplyButton({
           </label>
           <span
             className={`text-xs tabular-nums ${
-              message.length > MAX_CHARS ? "text-destructive" : "text-muted-foreground"
+              message.length > MAX_APPLICATION_MESSAGE
+                ? "text-destructive"
+                : "text-muted-foreground"
             }`}
           >
-            {message.length}/{MAX_CHARS}
+            {message.length}/{MAX_APPLICATION_MESSAGE}
           </span>
         </div>
         <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
           placeholder="Cuéntale a la institución por qué eres el indicado para este proyecto..."
           rows={4}
-          maxLength={MAX_CHARS}
+          {...register("message")}
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
         />
+        {errors.message && (
+          <p className="text-xs text-destructive">{errors.message.message}</p>
+        )}
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-2">
         <Button
-          onClick={handleApply}
-          disabled={loading || message.length > MAX_CHARS}
+          onClick={handleSubmit(handleApply)}
+          disabled={loading || message.length > MAX_APPLICATION_MESSAGE}
         >
           {loading ? "Enviando..." : "Enviar solicitud"}
         </Button>
