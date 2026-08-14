@@ -10,20 +10,28 @@ export async function updateStudentProfile(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const fullName = (formData.get("full_name") as string)?.trim();
+  const firstName = (formData.get("first_name") as string)?.trim();
+  const lastName = (formData.get("last_name") as string)?.trim();
+  const fullName = `${firstName} ${lastName}`.trim();
   const career = (formData.get("career") as string)?.trim() || null;
   const semesterRaw = formData.get("semester") as string;
   const semester = semesterRaw ? parseInt(semesterRaw) : null;
   const avatarFile = formData.get("avatar") as File | null;
   const cvFile = formData.get("cv") as File | null;
 
-  if (!fullName || fullName.length < 2)
-    return { error: "Ingresa tu nombre completo." };
+  if (!firstName || !lastName)
+    return { error: "Ingresa tu primer nombre y primer apellido." };
   if (semester !== null && (isNaN(semester) || semester < 1 || semester > 12))
     return { error: "El semestre debe estar entre 1 y 12." };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updates: Record<string, any> = { full_name: fullName, career, semester };
+  const updates: Record<string, any> = {
+    full_name: fullName,
+    first_name: firstName,
+    last_name: lastName,
+    career,
+    semester,
+  };
 
   // Avatar upload
   if (avatarFile && avatarFile.size > 0) {
@@ -62,7 +70,12 @@ export async function updateStudentProfile(formData: FormData) {
   if (error) return { error: error.message };
 
   await supabase.auth.updateUser({
-    data: { full_name: fullName, avatar_url: updates.avatar_url },
+    data: {
+      full_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
+      avatar_url: updates.avatar_url,
+    },
   });
 
   revalidatePath("/dashboard");

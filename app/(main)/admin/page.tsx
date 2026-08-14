@@ -27,7 +27,7 @@ export default async function AdminPage() {
   const verified = institutions?.filter((i) => i.verified).length ?? 0;
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Panel de administración</h1>
         <p className="text-sm text-muted-foreground mt-1">

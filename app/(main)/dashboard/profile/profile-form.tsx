@@ -10,6 +10,8 @@ import { toast } from "sonner";
 
 type Profile = {
   full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   role: string;
   avatar_url: string | null;
   career: string | null;
@@ -41,6 +43,15 @@ export function ProfileForm({
     profile.cv_url ? "CV actual" : null
   );
   const cvInputRef = useRef<HTMLInputElement>(null);
+
+  // Para estudiantes, si aún no hay first_name/last_name (migración pendiente),
+  // se dividen del full_name existente como valor inicial.
+  const initialFirstName =
+    profile.first_name ?? profile.full_name?.split(" ")[0] ?? "";
+  const initialLastName =
+    profile.last_name ??
+    profile.full_name?.split(" ").slice(1).join(" ") ??
+    "";
 
   // Warn on browser close/refresh when unsaved changes
   useEffect(() => {
@@ -143,16 +154,41 @@ export function ProfileForm({
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <h2 className="text-sm font-semibold">Datos personales</h2>
 
-        <div className="space-y-1.5">
-          <label className="text-sm font-medium">Nombre completo</label>
-          <input
-            name="full_name"
-            type="text"
-            required
-            defaultValue={profile.full_name ?? ""}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
+        {profile.role === "student" ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Primer nombre</label>
+              <input
+                name="first_name"
+                type="text"
+                required
+                defaultValue={initialFirstName}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Primer apellido</label>
+              <input
+                name="last_name"
+                type="text"
+                required
+                defaultValue={initialLastName}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Nombre completo</label>
+            <input
+              name="full_name"
+              type="text"
+              required
+              defaultValue={profile.full_name ?? ""}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        )}
 
         {profile.role === "student" && (
           <div className="grid grid-cols-2 gap-3">

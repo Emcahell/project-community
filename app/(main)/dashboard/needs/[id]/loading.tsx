@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function NeedDetailLoading() {
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <Skeleton className="h-4 w-28 mb-6" />
 
       {/* Title section */}

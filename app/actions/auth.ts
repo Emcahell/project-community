@@ -35,11 +35,31 @@ export async function login(formData: FormData) {
 export async function register(formData: FormData) {
   const email = (formData.get("email") as string)?.trim();
   const password = formData.get("password") as string;
-  const fullName = (formData.get("full_name") as string)?.trim();
+  const confirmPassword = formData.get("confirm_password") as string;
   const role = formData.get("role") as string;
+  const firstName = (formData.get("first_name") as string)?.trim();
+  const lastName = (formData.get("last_name") as string)?.trim();
+  const institutionName = (formData.get("institution_name") as string)?.trim();
 
+  if (!["student", "institution"].includes(role)) {
+    return { error: "Selecciona un tipo de cuenta válido." };
+  }
+
+  const fullName =
+    role === "institution"
+      ? institutionName
+      : `${firstName} ${lastName}`.trim();
+
+  if (role === "student" && (!firstName || !lastName)) {
+    return { error: "Ingresa tu primer nombre y primer apellido." };
+  }
   if (!fullName || fullName.length < 2) {
-    return { error: "Ingresa tu nombre completo (mínimo 2 caracteres)." };
+    return {
+      error:
+        role === "institution"
+          ? "Ingresa el nombre de la institución (mínimo 2 caracteres)."
+          : "Ingresa tu nombre completo (mínimo 2 caracteres).",
+    };
   }
   if (!email || !validateEmail(email)) {
     return { error: "Ingresa un correo electrónico válido." };
@@ -47,8 +67,8 @@ export async function register(formData: FormData) {
   if (!password || password.length < 6) {
     return { error: "La contraseña debe tener al menos 6 caracteres." };
   }
-  if (!["student", "institution"].includes(role)) {
-    return { error: "Selecciona un tipo de cuenta válido." };
+  if (!confirmPassword || password !== confirmPassword) {
+    return { error: "Las contraseñas no coinciden." };
   }
 
   const supabase = await createClient();
@@ -56,7 +76,13 @@ export async function register(formData: FormData) {
     email,
     password,
     options: {
-      data: { full_name: fullName, role },
+      data: {
+        full_name: fullName,
+        // Para estudiantes se guardan separados; para instituciones quedan null
+        first_name: role === "student" ? firstName : null,
+        last_name: role === "student" ? lastName : null,
+        role,
+      },
     },
   });
 

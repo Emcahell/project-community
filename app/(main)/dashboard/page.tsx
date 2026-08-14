@@ -2,10 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { logout } from "@/app/actions/auth";
 import { formatRelativeDate, getInitials } from "@/lib/utils";
 import { NeedCard } from "@/components/need-card";
 import { APPLICATION_STATUS } from "@/lib/constants";
 import { InstitutionNeedsList } from "./institution-needs-list";
+import { InstitutionSetupForm } from "./institution/setup/institution-setup-form";
 import { Plus, Settings, FileText, CheckCircle2, Clock, TrendingUp, ArrowRight } from "lucide-react";
 
 export default async function DashboardPage() {
@@ -23,16 +25,48 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
-  if (!profile) redirect("/login");
+  if (!profile) {
+    return (
+      <div className="max-w-md mx-auto text-center py-20">
+        <div className="w-12 h-12 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto mb-4">
+          <span className="text-destructive font-bold">!</span>
+        </div>
+        <h1 className="text-xl font-bold mb-2">Perfil no encontrado</h1>
+        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
+          No encontramos tu perfil en la plataforma. Esto suele pasar cuando
+          la cuenta se eliminó. Cierra sesión y contacta al administrador.
+        </p>
+        <form action={logout}>
+          <Button type="submit" variant="outline" className="font-medium">
+            Cerrar sesión
+          </Button>
+        </form>
+      </div>
+    );
+  }
 
   if (profile.role === "institution") {
-    return <InstitutionDashboard userId={user.id} />;
+    return (
+      <InstitutionDashboard
+        userId={user.id}
+        initialName={profile.full_name ?? ""}
+        initialEmail={user.email ?? ""}
+      />
+    );
   }
 
   return <StudentDashboard userId={user.id} profile={profile} />;
 }
 
-async function InstitutionDashboard({ userId }: { userId: string }) {
+async function InstitutionDashboard({
+  userId,
+  initialName,
+  initialEmail,
+}: {
+  userId: string;
+  initialName: string;
+  initialEmail: string;
+}) {
   const supabase = await createClient();
 
   const { data: institution } = await supabase
@@ -43,19 +77,20 @@ async function InstitutionDashboard({ userId }: { userId: string }) {
 
   if (!institution) {
     return (
-      <div className="max-w-md mx-auto text-center py-20">
-        <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-primary/15 to-violet-500/10 border border-primary/20 flex items-center justify-center mx-auto mb-5">
-          <Building2Icon className="w-8 h-8 text-primary" />
+      <div className="max-w-lg mx-auto">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Falta poco, solo termina de configurar la institución
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1 leading-relaxed">
+            Completa la información de tu institución para que los estudiantes
+            la conozcan y puedas publicar necesidades.
+          </p>
         </div>
-        <h1 className="text-xl font-bold mb-2">Configura tu institución</h1>
-        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
-          Antes de publicar necesidades, completa el perfil de tu institución.
-        </p>
-        <Link href="/dashboard/institution/setup">
-          <Button className="shadow-sm shadow-primary/20 font-semibold">
-            Configurar institución
-          </Button>
-        </Link>
+        <InstitutionSetupForm
+          initialName={initialName}
+          initialEmail={initialEmail}
+        />
       </div>
     );
   }
@@ -180,29 +215,6 @@ async function InstitutionDashboard({ userId }: { userId: string }) {
         }))}
       />
     </div>
-  );
-}
-
-function Building2Icon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
-      <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
-      <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
-      <path d="M10 6h4" />
-      <path d="M10 10h4" />
-      <path d="M10 14h4" />
-      <path d="M10 18h4" />
-    </svg>
   );
 }
 

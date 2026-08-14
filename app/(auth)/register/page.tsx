@@ -9,7 +9,9 @@ import { GraduationCap, Building2, Handshake, Sparkles, Eye, EyeOff } from "luci
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<"student" | "institution">("student");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -109,20 +111,44 @@ export default function RegisterPage() {
 
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-1.5">
-                <label htmlFor="full_name" className="text-sm font-semibold">
-                  Nombre completo
-                </label>
-                <input
-                  id="full_name"
-                  name="full_name"
-                  type="text"
-                  required
-                  autoComplete="name"
-                  placeholder="Tu nombre completo"
-                  className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
-                />
-              </div>
+              {role === "student" ? (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">Nombre completo</label>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <input
+                      name="first_name"
+                      type="text"
+                      required
+                      autoComplete="given-name"
+                      placeholder="Primer nombre"
+                      className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                    />
+                    <input
+                      name="last_name"
+                      type="text"
+                      required
+                      autoComplete="family-name"
+                      placeholder="Primer apellido"
+                      className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label htmlFor="institution_name" className="text-sm font-semibold">
+                    Nombre de la institución
+                  </label>
+                  <input
+                    id="institution_name"
+                    name="institution_name"
+                    type="text"
+                    required
+                    autoComplete="organization"
+                    placeholder="Ej. Alcaldía del municipio"
+                    className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
+                  />
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label htmlFor="email" className="text-sm font-semibold">
@@ -165,6 +191,31 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1.5">
+                <label htmlFor="confirm_password" className="text-sm font-semibold">
+                  Confirmar contraseña
+                </label>
+                <div className="relative">
+                  <input
+                    id="confirm_password"
+                    name="confirm_password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    placeholder="Repite la contraseña"
+                    className="w-full rounded-xl border border-input bg-background mt-2 px-3.5 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/4 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-sm font-semibold">Soy...</label>
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   <label className="flex items-center gap-3 rounded-xl border border-input p-3.5 cursor-pointer has-checked:border-primary has-checked:bg-primary/5 transition-all hover:border-border/80">
@@ -172,7 +223,8 @@ export default function RegisterPage() {
                       type="radio"
                       name="role"
                       value="student"
-                      defaultChecked
+                      checked={role === "student"}
+                      onChange={() => setRole("student")}
                       className="accent-primary"
                     />
                     <div>
@@ -185,6 +237,8 @@ export default function RegisterPage() {
                       type="radio"
                       name="role"
                       value="institution"
+                      checked={role === "institution"}
+                      onChange={() => setRole("institution")}
                       className="accent-primary"
                     />
                     <div>

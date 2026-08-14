@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProfileLoading() {
   return (
-    <div className="max-w-lg">
+    <div className="max-w-lg mx-auto">
       {/* Back link */}
       <Skeleton className="h-4 w-28 mb-6" />
 

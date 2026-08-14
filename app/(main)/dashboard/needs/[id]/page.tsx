@@ -42,7 +42,7 @@ export default async function NeedApplicationsPage({
   const statusInfo = NEED_STATUS[need.status] ?? NEED_STATUS.open;
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <Link
         href="/dashboard"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"

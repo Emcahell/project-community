@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "frontend-anti-tech-debt": {
+      "source": "emcahell/frontend-anti-tech-debt-skill",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-anti-tech-debt/SKILL.md",
+      "computedHash": "bf6903fe99cc5ecaac6e13fc74c9762983293540ea9be9e667442c4ad244b4b8"
+    }
+  }
+}
