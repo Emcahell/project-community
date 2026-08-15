@@ -13,13 +13,15 @@ export async function Navbar() {
   const fullName = user?.user_metadata?.full_name as string | undefined;
 
   let avatarUrl: string | null = null;
+  let role: string | undefined;
   if (user) {
     const supabaseData = await supabase
       .from("profiles")
-      .select("avatar_url")
+      .select("avatar_url, role")
       .eq("id", user.id)
       .single();
     avatarUrl = supabaseData.data?.avatar_url ?? null;
+    role = supabaseData.data?.role ?? undefined;
   }
 
   return (
@@ -45,7 +47,7 @@ export async function Navbar() {
           <nav className="flex items-center gap-2">
             {user ? (
               <div className="hidden md:flex">
-                <UserMenu avatarUrl={avatarUrl} fullName={fullName} />
+                <UserMenu avatarUrl={avatarUrl} fullName={fullName} role={role} />
               </div>
             ) : (
               <>
@@ -68,7 +70,9 @@ export async function Navbar() {
         </div>
       </header>
 
-      {user && <MobileNav avatarUrl={avatarUrl} fullName={fullName} />}
+      {user && (
+        <MobileNav avatarUrl={avatarUrl} fullName={fullName} role={role} />
+      )}
     </>
   );
 }

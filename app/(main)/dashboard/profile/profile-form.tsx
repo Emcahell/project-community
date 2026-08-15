@@ -34,6 +34,7 @@ type Profile = {
 };
 type Institution = {
   name: string;
+  email: string | null;
   description: string | null;
   address: string | null;
   phone: string | null;
@@ -45,9 +46,11 @@ type ProfileFormData = StudentProfileValues & InstitutionProfileValues;
 export function ProfileForm({
   profile,
   institution,
+  initialEmail,
 }: {
   profile: Profile;
   institution: Institution;
+  initialEmail: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -88,8 +91,8 @@ export function ProfileForm({
     defaultValues:
       profile.role === "institution"
         ? {
-            full_name: profile.full_name ?? "",
             name: institution?.name ?? "",
+            email: institution?.email ?? initialEmail,
             description: institution?.description ?? "",
             address: institution?.address ?? "",
             phone: institution?.phone ?? "",
@@ -221,11 +224,11 @@ export function ProfileForm({
         </div>
       )}
 
-      {/* Personal data */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-        <h2 className="text-sm font-semibold">Datos personales</h2>
+      {/* Datos personales (solo estudiantes) */}
+      {profile.role === "student" && (
+        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+          <h2 className="text-sm font-semibold">Datos personales</h2>
 
-        {profile.role === "student" ? (
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Primer nombre</label>
@@ -254,23 +257,7 @@ export function ProfileForm({
               )}
             </div>
           </div>
-        ) : (
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Nombre completo</label>
-            <input
-              type="text"
-              {...register("full_name")}
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-            {errors.full_name && (
-              <p className="text-xs text-destructive">
-                {errors.full_name.message}
-              </p>
-            )}
-          </div>
-        )}
 
-        {profile.role === "student" && (
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Carrera</label>
@@ -298,8 +285,8 @@ export function ProfileForm({
               )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* CV upload (students only) */}
       {profile.role === "student" && (
@@ -362,7 +349,7 @@ export function ProfileForm({
         </div>
       )}
 
-      {/* Institution data */}
+      {/* Datos de la institución (todo junto) */}
       {profile.role === "institution" && (
         <div className="rounded-xl border border-border bg-card p-5 space-y-4">
           <h2 className="text-sm font-semibold">Datos de la institución</h2>
@@ -382,7 +369,24 @@ export function ProfileForm({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Descripción</label>
+            <label className="text-sm font-medium">
+              Correo de registro <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="email"
+              placeholder="correo@institución.edu"
+              {...register("email")}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              Descripción <span className="text-destructive">*</span>
+            </label>
             <textarea
               rows={3}
               placeholder="Breve descripción de la institución..."
@@ -393,21 +397,33 @@ export function ProfileForm({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Dirección</label>
+              <label className="text-sm font-medium">
+                Dirección <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
                 {...register("address")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
+              {errors.address && (
+                <p className="text-xs text-destructive">
+                  {errors.address.message}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Teléfono</label>
+              <label className="text-sm font-medium">
+                Contacto <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
                 placeholder="Teléfono o correo de contacto"
                 {...register("phone")}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
+              {errors.phone && (
+                <p className="text-xs text-destructive">{errors.phone.message}</p>
+              )}
             </div>
           </div>
 

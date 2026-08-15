@@ -32,10 +32,11 @@ export function InstitutionSetupForm({
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<InstitutionSetupValues>({
+  } =  useForm<InstitutionSetupValues>({
     resolver: zodResolver(institutionSetupSchema),
     defaultValues: {
       name: initialName,
+      email: initialEmail,
       description: "",
       address: "",
       phone: "",
@@ -76,6 +77,22 @@ export function InstitutionSetupForm({
       return;
     }
 
+    // Cambiar el correo de acceso si fue modificado
+    if (values.email !== user.email) {
+      const { error: emailError } = await supabase.auth.updateUser({
+        email: values.email,
+      });
+      if (emailError) {
+        setError("root", {
+          message:
+            emailError.code === "email_exists"
+              ? "Ese correo ya está en uso por otra cuenta."
+              : `No se pudo cambiar el correo de acceso: ${emailError.message} (${emailError.code ?? "sin código"})`,
+        });
+        return;
+      }
+    }
+
     // Logo upload (opcional)
     let avatarUrl: string | null = null;
     if (avatarFile) {
@@ -98,6 +115,7 @@ export function InstitutionSetupForm({
     const { error } = await supabase.from("institutions").insert({
       profile_id: user.id,
       name: values.name,
+      email: values.email,
       description: values.description || null,
       address: values.address || null,
       phone: values.phone || null,
@@ -181,12 +199,23 @@ export function InstitutionSetupForm({
           {...register("name")}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
-        <p className="text-xs text-muted-foreground pt-1">
-          Correo de registro:{" "}
-          <span className="font-medium text-foreground">{initialEmail}</span>
-        </p>
         {errors.name && (
           <p className="text-xs text-destructive mt-1">{errors.name.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium">
+          Correo de registro <span className="text-destructive">*</span>
+        </label>
+        <input
+          type="email"
+          placeholder="correo@institución.edu"
+          {...register("email")}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+        />
+        {errors.email && (
+          <p className="text-xs text-destructive mt-1">{errors.email.message}</p>
         )}
       </div>
 

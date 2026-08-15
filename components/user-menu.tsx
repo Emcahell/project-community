@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X } from "lucide-react";
+import { Menu, Plus, X } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -13,9 +13,11 @@ import { getInitials } from "@/lib/utils";
 export function UserMenu({
   avatarUrl,
   fullName,
+  role,
 }: {
   avatarUrl: string | null;
   fullName?: string;
+  role?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -88,6 +90,16 @@ export function UserMenu({
                 </button>
               </div>
               <div className="p-4 space-y-3 overflow-y-auto">
+                {role === "institution" && (
+                  <Link
+                    href="/dashboard/departments"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 shrink-0" />
+                    Crear departamento
+                  </Link>
+                )}
                 <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
                   <span className="text-sm font-medium">Tema</span>
                   <ThemeToggle />

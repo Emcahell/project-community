@@ -12,6 +12,7 @@ type NeedWithApps = {
   title: string;
   status: string;
   created_at: string | null;
+  department: string | null;
   applications: { id: string; status: string }[];
 };
 
@@ -19,37 +20,15 @@ const STATUS_FILTERS = [
   { value: "all", label: "Todas" },
   { value: "open", label: "Abiertas" },
   { value: "in_progress", label: "En progreso" },
-  { value: "completed", label: "Completadas" },
-];
-
-const SORT_OPTIONS = [
-  { value: "newest", label: "Más recientes" },
-  { value: "oldest", label: "Más antiguas" },
-  { value: "pending", label: "Más pendientes" },
+  { value: "completed", label: "Aprobadas" },
 ];
 
 export function InstitutionNeedsList({ needs }: { needs: NeedWithApps[] }) {
   const [filter, setFilter] = useState("all");
-  const [sort, setSort] = useState("newest");
 
-  const filtered = needs
-    .filter((n) => filter === "all" || n.status === filter)
-    .sort((a, b) => {
-      if (sort === "oldest")
-        return (
-          new Date(a.created_at ?? 0).getTime() -
-          new Date(b.created_at ?? 0).getTime()
-        );
-      if (sort === "pending") {
-        const aPending = a.applications.filter((x) => x.status === "pending").length;
-        const bPending = b.applications.filter((x) => x.status === "pending").length;
-        return bPending - aPending;
-      }
-      return (
-        new Date(b.created_at ?? 0).getTime() -
-        new Date(a.created_at ?? 0).getTime()
-      );
-    });
+  const filtered = needs.filter(
+    (n) => filter === "all" || n.status === filter
+  );
 
   if (needs.length === 0) {
     return (
@@ -91,17 +70,12 @@ export function InstitutionNeedsList({ needs }: { needs: NeedWithApps[] }) {
           ))}
         </div>
 
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="ml-auto text-xs border border-border rounded-xl px-3 py-2 bg-background text-foreground outline-none focus:ring-2 focus:ring-ring/50 cursor-pointer"
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Link href="/dashboard/needs/new" className="ml-auto">
+          <Button size="sm" className="gap-1.5 font-semibold shadow-sm shadow-primary/20">
+            <Plus className="w-4 h-4" />
+            Nueva necesidad
+          </Button>
+        </Link>
       </div>
 
       {filtered.length === 0 ? (
@@ -143,6 +117,12 @@ export function InstitutionNeedsList({ needs }: { needs: NeedWithApps[] }) {
                 <p className="font-semibold text-sm leading-snug group-hover:text-primary transition-colors flex-1">
                   {need.title}
                 </p>
+
+                {need.department && (
+                  <span className="text-[11px] font-medium text-muted-foreground bg-muted border border-border/60 rounded-full px-2 py-0.5 w-fit">
+                    {need.department}
+                  </span>
+                )}
 
                 <div className="flex items-center justify-between pt-3 border-t border-border/60">
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">

@@ -89,11 +89,23 @@ export async function updateInstitutionProfile(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const { full_name, name, description, address, phone, website } =
-    parsed.data;
+  const { name, email, description, address, phone, website } = parsed.data;
+
+  // Cambiar el correo de acceso si fue modificado
+  if (email !== user.email) {
+    const { error: emailError } = await supabase.auth.updateUser({ email });
+    if (emailError) {
+      return {
+        error:
+          emailError.code === "email_exists"
+            ? "Ese correo ya está en uso por otra cuenta."
+            : `No se pudo cambiar el correo de acceso: ${emailError.message} (${emailError.code ?? "sin código"})`,
+      };
+    }
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profileUpdates: Record<string, any> = { full_name };
+  const profileUpdates: Record<string, any> = { full_name: name };
 
   // Logo upload
   if (avatarFile && avatarFile.size > 0) {
@@ -117,9 +129,10 @@ export async function updateInstitutionProfile(
       .from("institutions")
       .update({
         name,
-        description: description || null,
-        address: address || null,
-        phone: phone || null,
+        email,
+        description,
+        address,
+        phone,
         website: website || null,
       })
       .eq("profile_id", user.id),
@@ -129,7 +142,7 @@ export async function updateInstitutionProfile(
   if (institutionResult.error) return { error: institutionResult.error.message };
 
   await supabase.auth.updateUser({
-    data: { full_name, avatar_url: profileUpdates.avatar_url },
+    data: { full_name: name, avatar_url: profileUpdates.avatar_url },
   });
 
   revalidatePath("/dashboard");

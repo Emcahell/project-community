@@ -88,6 +88,7 @@ const urlOrEmpty = z.union([
 
 export const institutionSetupSchema = z.object({
   name: z.string().trim().min(2, "El nombre de la institución es requerido."),
+  email: emailField,
   description: z.string().trim().min(1, "La descripción es obligatoria."),
   address: z.string().trim().min(1, "La dirección es obligatoria."),
   phone: z.string().trim().min(1, "El contacto es obligatorio."),
@@ -118,14 +119,21 @@ export const studentProfileSchema = z.object({
 export type StudentProfileValues = z.infer<typeof studentProfileSchema>;
 
 export const institutionProfileSchema = z.object({
-  full_name: z.string().trim().min(2, "Ingresa tu nombre completo."),
   name: z.string().trim().min(2, "El nombre de la institución es requerido."),
-  description: z.string().trim(),
-  address: z.string().trim(),
-  phone: z.string().trim(),
+  email: emailField,
+  description: z.string().trim().min(1, "La descripción es obligatoria."),
+  address: z.string().trim().min(1, "La dirección es obligatoria."),
+  phone: z.string().trim().min(1, "El contacto es obligatorio."),
   website: urlOrEmpty,
 });
 export type InstitutionProfileValues = z.infer<typeof institutionProfileSchema>;
+
+// ---------- Departamentos ----------
+
+export const departmentSchema = z.object({
+  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres."),
+});
+export type DepartmentValues = z.infer<typeof departmentSchema>;
 
 // ---------- Necesidades ----------
 
@@ -139,6 +147,7 @@ export const needSchema = z.object({
       MAX_DESCRIPTION,
       `La descripción no puede superar ${MAX_DESCRIPTION} caracteres.`,
     ),
+  department_id: z.string().trim().optional(),
 });
 export type NeedValues = z.infer<typeof needSchema>;
 

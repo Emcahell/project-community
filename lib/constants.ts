@@ -1,15 +1,18 @@
 export const NEED_STATUS: Record<string, { label: string; className: string }> = {
   open: {
     label: "Abierta",
-    className: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    className:
+      "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-500/10 dark:border-emerald-500/30",
   },
   in_progress: {
     label: "En progreso",
-    className: "text-blue-700 bg-blue-50 border-blue-200",
+    className:
+      "text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-500/10 dark:border-blue-500/30",
   },
   completed: {
-    label: "Completada",
-    className: "text-muted-foreground bg-muted border-border",
+    label: "Aprobada",
+    className:
+      "text-violet-700 bg-violet-50 border-violet-200 dark:text-violet-300 dark:bg-violet-500/10 dark:border-violet-500/30",
   },
 };
 

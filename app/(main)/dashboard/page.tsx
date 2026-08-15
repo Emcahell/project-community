@@ -8,7 +8,7 @@ import { NeedCard } from "@/components/need-card";
 import { APPLICATION_STATUS } from "@/lib/constants";
 import { InstitutionNeedsList } from "./institution-needs-list";
 import { InstitutionSetupForm } from "./institution/setup/institution-setup-form";
-import { Plus, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -97,7 +97,7 @@ async function InstitutionDashboard({
 
   const { data: needs } = await supabase
     .from("needs")
-    .select(`*, applications(id, status)`)
+    .select(`*, applications(id, status), departments(name)`)
     .eq("institution_id", institution.id)
     .order("created_at", { ascending: false });
 
@@ -146,19 +146,13 @@ async function InstitutionDashboard({
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
           Mis necesidades
         </h2>
-        {totalNeeds > 0 && (
-          <Link href="/dashboard/needs/new">
-            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 font-medium">
-              <Plus className="w-3 h-3" /> Nueva
-            </Button>
-          </Link>
-        )}
       </div>
 
       <InstitutionNeedsList
         needs={(needs ?? []).map((n) => ({
           ...n,
           applications: n.applications as { id: string; status: string }[],
+          department: (n.departments as { name: string } | null)?.name ?? null,
         }))}
       />
     </div>

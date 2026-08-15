@@ -20,7 +20,7 @@ export default async function NeedApplicationsPage({
 
   const { data: need } = await supabase
     .from("needs")
-    .select(`*, institutions!inner(profile_id, name)`)
+    .select(`*, institutions!inner(profile_id, name), departments(name)`)
     .eq("id", id)
     .single();
 
@@ -52,8 +52,12 @@ export default async function NeedApplicationsPage({
       </Link>
 
       <div className="mb-6">
-        <p className="text-sm text-muted-foreground mb-1">{institution.name}</p>
-        <div className="flex items-start gap-3">
+        {need.departments && (
+          <span className="text-[11px] font-medium bg-muted border border-border/60 rounded-full px-2 py-0.5">
+            {(need.departments as { name: string }).name}
+          </span>
+        )}
+        <div className="flex items-start gap-3 mt-2">
           <h1 className="text-2xl font-bold flex-1">{need.title}</h1>
           <span
             className={`shrink-0 mt-1 text-xs font-medium px-2 py-0.5 rounded-full border ${statusInfo.className}`}
@@ -61,6 +65,11 @@ export default async function NeedApplicationsPage({
             {statusInfo.label}
           </span>
         </div>
+        {need.description && (
+          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+            {need.description}
+          </p>
+        )}
       </div>
 
       {total > 0 && (
