@@ -40,12 +40,6 @@ export default function ProfileLoading() {
         </div>
       </div>
 
-      {/* CV card */}
-      <div className="rounded-xl border border-border bg-card p-5 mb-6 space-y-3">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-10 w-full rounded-lg" />
-      </div>
-
       <Skeleton className="h-9 w-32 rounded-lg" />
     </div>
   );

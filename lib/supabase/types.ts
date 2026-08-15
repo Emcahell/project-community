@@ -15,6 +15,7 @@ export type Database = {
           id: string
           message: string | null
           need_id: string
+          rejection_reason: string | null
           status: string
           student_id: string
         }
@@ -23,6 +24,7 @@ export type Database = {
           id?: string
           message?: string | null
           need_id: string
+          rejection_reason?: string | null
           status?: string
           student_id: string
         }
@@ -31,6 +33,7 @@ export type Database = {
           id?: string
           message?: string | null
           need_id?: string
+          rejection_reason?: string | null
           status?: string
           student_id?: string
         }
@@ -44,6 +47,11 @@ export type Database = {
           name: string
           phone: string | null
           profile_id: string
+          schedule: {
+            days: string[]
+            open_time: string
+            close_time: string
+          } | null
           verified: boolean
           website: string | null
         }
@@ -55,6 +63,11 @@ export type Database = {
           name: string
           phone?: string | null
           profile_id: string
+          schedule?: {
+            days: string[]
+            open_time: string
+            close_time: string
+          } | null
           verified?: boolean
           website?: string | null
         }
@@ -66,6 +79,11 @@ export type Database = {
           name?: string
           phone?: string | null
           profile_id?: string
+          schedule?: {
+            days: string[]
+            open_time: string
+            close_time: string
+          } | null
           verified?: boolean
           website?: string | null
         }
@@ -137,6 +155,6 @@ export type Institution = Database["public"]["Tables"]["institutions"]["Row"]
 export type Need = Database["public"]["Tables"]["needs"]["Row"]
 export type Application = Database["public"]["Tables"]["applications"]["Row"]
 
-export type NeedStatus = "open" | "in_progress" | "completed"
+export type NeedStatus = "open" | "approved"
 export type ApplicationStatus = "pending" | "accepted" | "rejected"
 export type UserRole = "student" | "institution" | "admin"

@@ -13,11 +13,12 @@ import {
   studentProfileSchema,
   institutionProfileSchema,
   MAX_AVATAR_SIZE,
-  MAX_CV_SIZE,
+  WEEK_DAYS,
+  TRACKS,
   type StudentProfileValues,
   type InstitutionProfileValues,
 } from "@/lib/validations";
-import { Upload, FileText, X, Camera } from "lucide-react";
+import { Camera, Clock } from "lucide-react";
 import Image from "next/image";
 import { getInitials } from "@/lib/utils";
 import { toast } from "sonner";
@@ -28,9 +29,7 @@ type Profile = {
   last_name: string | null;
   role: string;
   avatar_url: string | null;
-  career: string | null;
   semester: number | null;
-  cv_url: string | null;
 };
 type Institution = {
   name: string;
@@ -39,6 +38,7 @@ type Institution = {
   address: string | null;
   phone: string | null;
   website: string | null;
+  schedule: { days: string[]; open_time: string; close_time: string } | null;
 } | null;
 
 type ProfileFormData = StudentProfileValues & InstitutionProfileValues;
@@ -62,12 +62,6 @@ export function ProfileForm({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const [cvFileName, setCvFileName] = useState<string | null>(
-    profile.cv_url ? "CV actual" : null
-  );
-  const [cvFile, setCvFile] = useState<File | null>(null);
-  const cvInputRef = useRef<HTMLInputElement>(null);
-
   // Para estudiantes, si aún no hay first_name/last_name (migración pendiente),
   // se dividen del full_name existente como valor inicial.
   const initialFirstName =
@@ -82,9 +76,16 @@ export function ProfileForm({
       ? institutionProfileSchema
       : studentProfileSchema;
 
+  // El trayecto se guardó como número (2, 3 o 4); se mapea al valor del select
+  const initialTrack = TRACKS.some((t) => t.value === String(profile.semester))
+    ? (String(profile.semester) as (typeof TRACKS)[number]["value"])
+    : "";
+
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<ProfileFormData>({
     resolver: zodResolver(schema) as unknown as Resolver<ProfileFormData>,
@@ -97,14 +98,29 @@ export function ProfileForm({
             address: institution?.address ?? "",
             phone: institution?.phone ?? "",
             website: institution?.website ?? "",
+            schedule: {
+              days: institution?.schedule?.days ?? [],
+              open_time: institution?.schedule?.open_time ?? "",
+              close_time: institution?.schedule?.close_time ?? "",
+            },
           }
         : {
             first_name: initialFirstName,
             last_name: initialLastName,
-            career: profile.career ?? "",
-            semester: profile.semester ? String(profile.semester) : "",
+            track: initialTrack,
           },
   });
+
+  const selectedDays = watch("schedule.days") ?? [];
+  const track = watch("track") ?? "";
+
+  function toggleDay(day: string) {
+    const next = selectedDays.includes(day)
+      ? selectedDays.filter((d) => d !== day)
+      : [...selectedDays, day];
+    setValue("schedule.days", next, { shouldValidate: true });
+    setIsDirty(true);
+  }
 
   // Warn on browser close/refresh when unsaved changes
   useEffect(() => {
@@ -130,30 +146,12 @@ export function ProfileForm({
     setIsDirty(true);
   }
 
-  function handleCvChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_CV_SIZE) {
-      toast.error("El CV no puede superar 4 MB.");
-      e.target.value = "";
-      return;
-    }
-    if (file.type !== "application/pdf") {
-      toast.error("El CV debe ser un archivo PDF.");
-      e.target.value = "";
-      return;
-    }
-    setCvFile(file);
-    setCvFileName(file.name);
-    setIsDirty(true);
-  }
-
   async function onSubmit(values: ProfileFormData) {
     setLoading(true);
     const result =
       profile.role === "institution"
         ? await updateInstitutionProfile(values, avatarFile)
-        : await updateStudentProfile(values, cvFile);
+        : await updateStudentProfile(values);
 
     if (result?.error) {
       toast.error(result.error);
@@ -258,94 +256,49 @@ export function ProfileForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Carrera</label>
-              <input
-                type="text"
-                placeholder="Ej. Ingeniería en Sistemas"
-                {...register("career")}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Semestre</label>
-              <input
-                type="number"
-                min={1}
-                max={12}
-                placeholder="1–12"
-                {...register("semester")}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
-              {errors.semester && (
-                <p className="text-xs text-destructive">
-                  {errors.semester.message}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CV upload (students only) */}
-      {profile.role === "student" && (
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <h2 className="text-sm font-semibold">Currículum (CV)</h2>
-          <div className="flex items-center gap-3">
-            <div
-              className={`flex-1 flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm ${
-                cvFileName
-                  ? "border-primary/30 bg-primary/5 text-foreground"
-                  : "border-dashed border-border text-muted-foreground"
-              }`}
-            >
-              <FileText className={`w-4 h-4 shrink-0 ${cvFileName ? "text-primary" : ""}`} />
-              <span className="truncate">{cvFileName ?? "Sin CV adjunto"}</span>
-              {cvFileName && profile.cv_url && (
-                <a
-                  href={profile.cv_url.split("?")[0]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-auto text-xs text-primary hover:underline shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Ver
-                </a>
-              )}
-              {cvFileName && !profile.cv_url && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCvFileName(null);
-                    setCvFile(null);
-                    if (cvInputRef.current) cvInputRef.current.value = "";
-                    setIsDirty(true);
-                  }}
-                  className="ml-auto shrink-0"
-                >
-                  <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => cvInputRef.current?.click()}
-              className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline shrink-0"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              {cvFileName ? "Cambiar" : "Subir PDF"}
-            </button>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Carrera</label>
             <input
-              ref={cvInputRef}
-              name="cv"
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={handleCvChange}
+              type="text"
+              value="Informática"
+              disabled
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60"
             />
+            <p className="text-xs text-muted-foreground">
+              La plataforma está dirigida a la carrera de Informática.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">Solo PDF · Máx. 4 MB</p>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Trayecto</label>
+            <div className="flex flex-wrap gap-1.5">
+              {TRACKS.map((t) => {
+                const active = track === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => {
+                      setValue("track", active ? "" : t.value, {
+                        shouldValidate: true,
+                      });
+                      setIsDirty(true);
+                    }}
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+            {errors.track && (
+              <p className="text-xs text-destructive">{errors.track.message}</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -393,6 +346,72 @@ export function ProfileForm({
               {...register("description")}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-1.5 text-sm font-medium">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              Horario de atención <span className="text-destructive">*</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {WEEK_DAYS.map((d) => {
+                const active = selectedDays.includes(d.value);
+                return (
+                  <button
+                    key={d.value}
+                    type="button"
+                    onClick={() => toggleDay(d.value)}
+                    className={`w-10 h-9 rounded-lg border text-xs font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Selecciona al menos un día.
+            </p>
+            {errors.schedule?.days && (
+              <p className="text-xs text-destructive">
+                {errors.schedule.days.message}
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  Hora de apertura <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="time"
+                  {...register("schedule.open_time")}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  Hora de cierre <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="time"
+                  {...register("schedule.close_time")}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
+            {errors.schedule?.open_time && (
+              <p className="text-xs text-destructive">
+                {errors.schedule.open_time.message}
+              </p>
+            )}
+            {errors.schedule?.close_time && (
+              <p className="text-xs text-destructive">
+                {errors.schedule.close_time.message}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, ArrowRight, BadgeCheck, Clock } from "lucide-react";
 import { formatRelativeDate, getInitials } from "@/lib/utils";
 import { NEED_STATUS } from "@/lib/constants";
@@ -14,11 +15,13 @@ type NeedWithInstitution = {
     name: string;
     address: string | null;
     verified?: boolean;
+    profiles?: { avatar_url: string | null } | null;
   } | null;
 };
 
 export function NeedCard({ need }: { need: NeedWithInstitution }) {
   const institutionName = need.institutions?.name ?? "";
+  const institutionAvatar = need.institutions?.profiles?.avatar_url ?? null;
   const status = NEED_STATUS[need.status] ?? NEED_STATUS.open;
 
   return (
@@ -28,8 +31,20 @@ export function NeedCard({ need }: { need: NeedWithInstitution }) {
     >
       <div className="flex items-start justify-between gap-2 mb-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-primary/15 to-violet-500/10 border border-primary/15 flex items-center justify-center text-[11px] font-bold text-primary shrink-0 select-none">
-            {getInitials(institutionName)}
+          <div className="relative w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-border/60 select-none">
+            {institutionAvatar ? (
+              <Image
+                src={institutionAvatar}
+                alt={institutionName}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full bg-linear-to-br from-primary/15 to-violet-500/10 flex items-center justify-center text-[11px] font-bold text-primary">
+                {getInitials(institutionName)}
+              </div>
+            )}
           </div>
           <div className="min-w-0">
             <p className="flex items-center gap-1 text-xs font-semibold truncate text-foreground/90">

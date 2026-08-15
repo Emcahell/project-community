@@ -19,8 +19,7 @@ type NeedWithApps = {
 const STATUS_FILTERS = [
   { value: "all", label: "Todas" },
   { value: "open", label: "Abiertas" },
-  { value: "in_progress", label: "En progreso" },
-  { value: "completed", label: "Aprobadas" },
+  { value: "approved", label: "Aprobadas" },
 ];
 
 export function InstitutionNeedsList({ needs }: { needs: NeedWithApps[] }) {

@@ -6,15 +6,12 @@ import {
   studentProfileSchema,
   institutionProfileSchema,
   MAX_AVATAR_SIZE,
-  MAX_CV_SIZE,
+  STUDENT_CAREER,
   type StudentProfileValues,
   type InstitutionProfileValues,
 } from "@/lib/validations";
 
-export async function updateStudentProfile(
-  values: StudentProfileValues,
-  cvFile: File | null,
-) {
+export async function updateStudentProfile(values: StudentProfileValues) {
   const parsed = studentProfileSchema.safeParse(values);
   if (!parsed.success)
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
@@ -25,36 +22,19 @@ export async function updateStudentProfile(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const { first_name, last_name, career } = parsed.data;
+  const { first_name, last_name, track } = parsed.data;
   const fullName = `${first_name} ${last_name}`.trim();
-  const semesterRaw = parsed.data.semester;
-  const semester = semesterRaw === "" ? null : Number(semesterRaw);
+  // El trayecto se guarda como número (2, 3 o 4)
+  const semester = track === "" ? null : Number(track);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updates: Record<string, any> = {
     full_name: fullName,
     first_name,
     last_name,
-    career: career || null,
+    career: STUDENT_CAREER,
     semester,
   };
-
-  // CV upload
-  if (cvFile && cvFile.size > 0) {
-    if (cvFile.size > MAX_CV_SIZE)
-      return { error: "El CV no puede superar 4 MB." };
-    if (cvFile.type !== "application/pdf")
-      return { error: "El CV debe ser un archivo PDF." };
-
-    const path = `${user.id}/cv.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from("cvs")
-      .upload(path, cvFile, { upsert: true, contentType: "application/pdf" });
-    if (uploadError) return { error: "Error subiendo el CV." };
-
-    const { data: urlData } = supabase.storage.from("cvs").getPublicUrl(path);
-    updates.cv_url = `${urlData.publicUrl}?t=${Date.now()}`;
-  }
 
   const { error } = await supabase
     .from("profiles")
@@ -89,7 +69,8 @@ export async function updateInstitutionProfile(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const { name, email, description, address, phone, website } = parsed.data;
+  const { name, email, description, address, phone, website, schedule } =
+    parsed.data;
 
   // Cambiar el correo de acceso si fue modificado
   if (email !== user.email) {
@@ -134,6 +115,7 @@ export async function updateInstitutionProfile(
         address,
         phone,
         website: website || null,
+        schedule,
       })
       .eq("profile_id", user.id),
   ]);

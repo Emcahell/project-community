@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Phone, Globe } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Globe, Clock } from "lucide-react";
 import { ApplyButton } from "./apply-button";
 import { formatRelativeDate } from "@/lib/utils";
 import { NEED_STATUS } from "@/lib/constants";
+import { WEEK_DAYS } from "@/lib/validations";
 
 export default async function NeedPage({
   params,
@@ -16,7 +17,7 @@ export default async function NeedPage({
 
   const { data: need } = await supabase
     .from("needs")
-    .select(`*, institutions (id, name, address, phone, website, description)`)
+    .select(`*, institutions (id, name, address, phone, website, description, schedule)`)
     .eq("id", id)
     .single();
 
@@ -27,7 +28,12 @@ export default async function NeedPage({
   } = await supabase.auth.getUser();
 
   let userRole: string | null = null;
-  let alreadyApplied = false;
+  let studentApplications: {
+    id: string;
+    status: string;
+    rejection_reason: string | null;
+    created_at: string | null;
+  }[] = [];
 
   if (user) {
     const { data: profile } = await supabase
@@ -38,13 +44,13 @@ export default async function NeedPage({
     userRole = profile?.role ?? null;
 
     if (userRole === "student") {
-      const { data: application } = await supabase
+      const { data: applications } = await supabase
         .from("applications")
-        .select("id")
+        .select("id, status, rejection_reason, created_at")
         .eq("need_id", id)
         .eq("student_id", user.id)
-        .single();
-      alreadyApplied = !!application;
+        .order("created_at", { ascending: false });
+      studentApplications = applications ?? [];
     }
   }
 
@@ -55,7 +61,11 @@ export default async function NeedPage({
     phone: string | null;
     website: string | null;
     description: string | null;
+    schedule: { days: string[]; open_time: string; close_time: string } | null;
   } | null;
+
+  const dayLabel = (value: string) =>
+    WEEK_DAYS.find((d) => d.value === value)?.label ?? value;
 
   const statusInfo = NEED_STATUS[need.status] ?? NEED_STATUS.open;
 
@@ -96,7 +106,7 @@ export default async function NeedPage({
       </p>
 
       {institution && (
-        <div className="rounded-xl border border-border p-5 mb-8">
+        <div className="rounded-xl border border-border bg-card p-5 mb-8">
           <h2 className="font-semibold text-sm mb-3">Sobre la institución</h2>
           {institution.description && (
             <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
@@ -116,6 +126,20 @@ export default async function NeedPage({
                 <span>{institution.phone}</span>
               </div>
             )}
+            {institution.schedule &&
+              institution.schedule.days.length > 0 && (
+                <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    {institution.schedule.days
+                      .map(dayLabel)
+                      .join(", ")}
+                    <span className="mx-1">·</span>
+                    {institution.schedule.open_time} –{" "}
+                    {institution.schedule.close_time}
+                  </span>
+                </div>
+              )}
             {institution.website && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Globe className="w-4 h-4 shrink-0" />
@@ -137,8 +161,9 @@ export default async function NeedPage({
         needId={id}
         user={user}
         userRole={userRole}
-        alreadyApplied={alreadyApplied}
         needStatus={need.status}
+        applications={studentApplications}
+        institution={institution}
       />
     </div>
   );

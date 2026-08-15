@@ -53,7 +53,7 @@ export default async function NeedApplicationsPage({
 
       <div className="mb-6">
         {need.departments && (
-          <span className="text-[11px] font-medium bg-muted border border-border/60 rounded-full px-2 py-0.5">
+          <span className="text-[11px] font-medium text-muted-foreground bg-muted border border-border/60 rounded-full px-2 py-0.5">
             {(need.departments as { name: string }).name}
           </span>
         )}
@@ -74,15 +74,15 @@ export default async function NeedApplicationsPage({
 
       {total > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="rounded-xl border border-border p-3 text-center">
+          <div className="rounded-xl border border-border bg-card p-3 text-center">
             <p className="text-2xl font-bold">{total}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Total</p>
           </div>
-          <div className="rounded-xl border border-border p-3 text-center">
+          <div className="rounded-xl border border-border bg-card p-3 text-center">
             <p className="text-2xl font-bold text-amber-600">{pending}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Pendientes</p>
           </div>
-          <div className="rounded-xl border border-border p-3 text-center">
+          <div className="rounded-xl border border-border bg-card p-3 text-center">
             <p className="text-2xl font-bold text-emerald-600">{accepted}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Aceptadas</p>
           </div>

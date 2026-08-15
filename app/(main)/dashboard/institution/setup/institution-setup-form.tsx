@@ -8,10 +8,11 @@ import { createClient } from "@/lib/supabase/client";
 import {
   institutionSetupSchema,
   MAX_AVATAR_SIZE,
+  WEEK_DAYS,
   type InstitutionSetupValues,
 } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
-import { Camera } from "lucide-react";
+import { Camera, Clock } from "lucide-react";
 import Image from "next/image";
 import { getInitials } from "@/lib/utils";
 
@@ -31,6 +32,8 @@ export function InstitutionSetupForm({
     register,
     handleSubmit,
     setError,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } =  useForm<InstitutionSetupValues>({
     resolver: zodResolver(institutionSetupSchema),
@@ -41,8 +44,18 @@ export function InstitutionSetupForm({
       address: "",
       phone: "",
       website: "",
+      schedule: { days: [], open_time: "", close_time: "" },
     },
   });
+
+  const selectedDays = watch("schedule.days") ?? [];
+
+  function toggleDay(day: string) {
+    const next = selectedDays.includes(day)
+      ? selectedDays.filter((d) => d !== day)
+      : [...selectedDays, day];
+    setValue("schedule.days", next, { shouldValidate: true });
+  }
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -108,7 +121,6 @@ export function InstitutionSetupForm({
       const { data: urlData } = supabase.storage
         .from("avatars")
         .getPublicUrl(path);
-      // eslint-disable-next-line react-hooks/purity -- Date.now() en event handler (falso positivo del React Compiler con RHF)
       avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
     }
 
@@ -120,6 +132,7 @@ export function InstitutionSetupForm({
       address: values.address || null,
       phone: values.phone || null,
       website: values.website || null,
+      schedule: values.schedule,
     });
 
     if (error) {
@@ -232,6 +245,68 @@ export function InstitutionSetupForm({
         {errors.description && (
           <p className="text-xs text-destructive mt-1">
             {errors.description.message}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <label className="flex items-center gap-1.5 text-sm font-medium">
+          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+          Horario de atención <span className="text-destructive">*</span>
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {WEEK_DAYS.map((d) => {
+            const active = selectedDays.includes(d.value);
+            return (
+              <button
+                key={d.value}
+                type="button"
+                onClick={() => toggleDay(d.value)}
+                className={`w-10 h-9 rounded-lg border text-xs font-medium transition-colors ${
+                  active
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                }`}
+              >
+                {d.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Selecciona al menos un día.
+        </p>
+        {errors.schedule?.days && (
+          <p className="text-xs text-destructive mt-1">
+            {errors.schedule.days.message}
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              Hora de apertura <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="time"
+              {...register("schedule.open_time")}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">
+              Hora de cierre <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="time"
+              {...register("schedule.close_time")}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+        {(errors.schedule?.open_time || errors.schedule?.close_time) && (
+          <p className="text-xs text-destructive mt-1">
+            {errors.schedule?.open_time?.message ??
+              errors.schedule?.close_time?.message}
           </p>
         )}
       </div>

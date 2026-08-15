@@ -8,7 +8,7 @@ export default async function HomePage() {
 
   const { data: needs } = await supabase
     .from("needs")
-    .select(`*, institutions (id, name, address)`)
+    .select(`*, institutions (id, name, address, profiles (avatar_url))`)
     .eq("status", "open")
     .order("created_at", { ascending: false });
 

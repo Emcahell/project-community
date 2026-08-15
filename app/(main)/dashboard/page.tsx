@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/actions/auth";
-import { formatRelativeDate, getInitials } from "@/lib/utils";
 import { NeedCard } from "@/components/need-card";
-import { APPLICATION_STATUS } from "@/lib/constants";
 import { InstitutionNeedsList } from "./institution-needs-list";
 import { InstitutionSetupForm } from "./institution/setup/institution-setup-form";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  StudentApplicationsList,
+  type StudentApplication,
+} from "./student-applications-list";
+import { CheckCircle2 } from "lucide-react";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -176,7 +177,7 @@ async function StudentDashboard({
       .order("created_at", { ascending: false }),
     supabase
       .from("needs")
-      .select(`*, institutions (id, name, address, verified)`)
+      .select(`*, institutions (id, name, address, verified, profiles (avatar_url))`)
       .eq("status", "open")
       .order("created_at", { ascending: false }),
   ]);
@@ -233,48 +234,10 @@ async function StudentDashboard({
           <h2 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-widest">
             Mis solicitudes
           </h2>
-          <div className="space-y-2 mb-10">
-            {applications.map((app) => {
-              const need = app.needs as {
-                id: string;
-                title: string;
-                status: string;
-                institutions: { id: string; name: string; address: string | null } | null;
-              } | null;
-              const appStatus =
-                APPLICATION_STATUS[app.status] ?? APPLICATION_STATUS.pending;
-
-              return (
-                <Link
-                  key={app.id}
-                  href={`/needs/${need?.id}`}
-                  className="group flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-px transition-all duration-200"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary/15 to-violet-500/10 border border-primary/15 flex items-center justify-center text-[11px] font-bold text-primary shrink-0 select-none">
-                    {getInitials(need?.institutions?.name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                      {need?.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {need?.institutions?.name}
-                      {app.created_at && (
-                        <> · {formatRelativeDate(app.created_at)}</>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className={`text-xs font-medium px-2.5 py-1 rounded-full border ${appStatus.className}`}
-                    >
-                      {appStatus.label}
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="mb-10">
+            <StudentApplicationsList
+              applications={applications as unknown as StudentApplication[]}
+            />
           </div>
         </>
       )}

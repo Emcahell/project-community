@@ -39,7 +39,7 @@ export function ApplicationsList({
 
   if (applications.length === 0) {
     return (
-      <div className="text-center py-20 border border-dashed border-border rounded-2xl">
+      <div className="text-center py-20 border border-dashed border-border rounded-2xl bg-card">
         <div className="w-14 h-14 rounded-2xl bg-muted border border-border flex items-center justify-center mx-auto mb-4">
           <Users className="w-7 h-7 text-muted-foreground" />
         </div>
@@ -85,7 +85,7 @@ export function ApplicationsList({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-10 border border-dashed border-border rounded-xl">
+        <div className="text-center py-10 border border-dashed border-border rounded-xl bg-card">
           <p className="text-sm text-muted-foreground">
             No hay solicitudes {FILTERS.find((f) => f.value === filter)?.label.toLowerCase()}.
           </p>
