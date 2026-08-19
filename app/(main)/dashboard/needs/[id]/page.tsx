@@ -31,9 +31,65 @@ export default async function NeedApplicationsPage({
 
   const { data: applications } = await supabase
     .from("applications")
-    .select(`*, profiles(full_name, avatar_url)`)
+    .select(`*, profiles(full_name, avatar_url, first_name, last_name)`)
     .eq("need_id", id)
     .order("created_at", { ascending: false });
+
+  // Fetch team members for each applicant (bidirectional)
+  const applicantIds = (applications ?? []).map((a) => a.student_id);
+  const teamMembersByStudent: Record<string, { id: string; full_name: string | null; first_name: string | null; last_name: string | null }[]> = {};
+
+  if (applicantIds.length > 0) {
+    // Fetch both directions: where applicant is owner AND where applicant is member
+    const { data: ownedRows } = await supabase
+      .from("team_members")
+      .select("owner_id, member_id")
+      .in("owner_id", applicantIds);
+
+    const { data: memberOfRows } = await supabase
+      .from("team_members")
+      .select("member_id, owner_id")
+      .in("member_id", applicantIds);
+
+    // Build: for each applicant, collect their team members from both directions
+    for (const row of ownedRows ?? []) {
+      if (!teamMembersByStudent[row.owner_id]) teamMembersByStudent[row.owner_id] = [];
+      teamMembersByStudent[row.owner_id].push({ id: row.member_id } as { id: string; full_name: string | null; first_name: string | null; last_name: string | null });
+    }
+    for (const row of memberOfRows ?? []) {
+      if (!teamMembersByStudent[row.member_id]) teamMembersByStudent[row.member_id] = [];
+      teamMembersByStudent[row.member_id].push({ id: row.owner_id } as { id: string; full_name: string | null; first_name: string | null; last_name: string | null });
+    }
+
+    // Fetch all unique member profiles
+    const allMemberIds = [...new Set([
+      ...(ownedRows ?? []).map((r) => r.member_id),
+      ...(memberOfRows ?? []).map((r) => r.owner_id),
+    ])];
+    let allMemberProfiles: { id: string; full_name: string | null; first_name: string | null; last_name: string | null }[] = [];
+
+    if (allMemberIds.length > 0) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, first_name, last_name")
+        .in("id", allMemberIds);
+      allMemberProfiles = data ?? [];
+    }
+
+    const profileMap = new Map(allMemberProfiles.map((p) => [p.id, p]));
+    for (const applicantId of Object.keys(teamMembersByStudent)) {
+      teamMembersByStudent[applicantId] = teamMembersByStudent[applicantId]
+        .map((m) => profileMap.get(m.id) ?? m)
+        .filter((m) => m.id);
+      // Deduplicate
+      const seen = new Set<string>();
+      teamMembersByStudent[applicantId] = teamMembersByStudent[applicantId].filter((m) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+    }
+  }
 
   const total = applications?.length ?? 0;
   const pending = applications?.filter((a) => a.status === "pending").length ?? 0;
@@ -89,7 +145,7 @@ export default async function NeedApplicationsPage({
         </div>
       )}
 
-      <ApplicationsList applications={applications ?? []} />
+      <ApplicationsList applications={applications ?? []} teamMembersByStudent={teamMembersByStudent} />
     </div>
   );
 }

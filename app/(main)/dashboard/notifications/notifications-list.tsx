@@ -33,7 +33,9 @@ export function NotificationsList({
         prev.map((x) => (x.id === n.id ? { ...x, read: true } : x))
       );
     }
-    if (n.need_id) {
+    if (n.type === "team_added") {
+      router.push("/dashboard/team");
+    } else if (n.need_id) {
       // Institución → página de gestión de la necesidad;
       // estudiante → página pública de detalles de la necesidad
       router.push(

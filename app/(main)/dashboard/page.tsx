@@ -239,12 +239,70 @@ async function StudentDashboard({
 }) {
   const supabase = await createClient();
 
-  // Todas las solicitudes del estudiante: stats + ids aplicados + lista (con paginación local)
-  const { data: applications } = await supabase
+  // Fetch team member IDs (bidirectional)
+  const { data: ownedRows } = await supabase
+    .from("team_members")
+    .select("member_id")
+    .eq("owner_id", userId);
+  const { data: memberOfRows } = await supabase
+    .from("team_members")
+    .select("owner_id")
+    .eq("member_id", userId);
+  const teamMemberIds = [
+    ...new Set([
+      ...(ownedRows ?? []).map((r) => r.member_id),
+      ...(memberOfRows ?? []).map((r) => r.owner_id),
+    ]),
+  ];
+
+  // Fetch own applications
+  const { data: ownApps } = await supabase
     .from("applications")
     .select(`*, needs (id, title, status, institutions (id, name, address))`)
     .eq("student_id", userId)
     .order("created_at", { ascending: false });
+
+  // Fetch team members' applications
+  let teamApps: typeof ownApps = [];
+  if (teamMemberIds.length > 0) {
+    const { data } = await supabase
+      .from("applications")
+      .select(`*, needs (id, title, status, institutions (id, name, address))`)
+      .in("student_id", teamMemberIds)
+      .order("created_at", { ascending: false });
+    teamApps = data ?? [];
+  }
+
+  // Fetch team member profiles for name display
+  const teamMemberProfiles: Record<string, string> = {};
+  if (teamMemberIds.length > 0) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, first_name, last_name")
+      .in("id", teamMemberIds);
+    for (const p of data ?? []) {
+      teamMemberProfiles[p.id] =
+        [p.first_name, p.last_name].filter(Boolean).join(" ") ||
+        p.full_name ||
+        "Compañero";
+    }
+  }
+
+  // Combine: own apps first, then team apps (each tagged with student_name)
+  const ownAppIds = new Set((ownApps ?? []).map((a) => a.id));
+  const applications = [
+    ...(ownApps ?? []).map((a) => ({ ...a, student_name: null as string | null })),
+    ...(teamApps ?? [])
+      .filter((a) => !ownAppIds.has(a.id))
+      .map((a) => ({
+        ...a,
+        student_name: teamMemberProfiles[a.student_id] ?? "Compañero",
+      })),
+  ].sort((a, b) => {
+    const da = a.created_at ?? "";
+    const db = b.created_at ?? "";
+    return db.localeCompare(da);
+  });
 
   const appliedNeedIds = new Set(
     applications

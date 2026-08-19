@@ -9,12 +9,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { X, Users } from "lucide-react";
 import {
   rejectionReasonSchema,
   MAX_REJECTION_REASON,
   type RejectionReasonValues,
 } from "@/lib/validations";
+
+type TeamMember = {
+  id: string;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
 
 type Application = {
   id: string;
@@ -22,14 +29,21 @@ type Application = {
   status: string;
   rejection_reason?: string | null;
   created_at: string | null;
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
+  profiles: { full_name: string | null; avatar_url: string | null; first_name: string | null; last_name: string | null } | null;
 };
 
-export function ApplicationCard({ application }: { application: Application }) {
+export function ApplicationCard({
+  application,
+  teamMembers,
+}: {
+  application: Application;
+  teamMembers?: TeamMember[];
+}) {
   const [status, setStatus] = useState(application.status);
   const [reason, setReason] = useState(application.rejection_reason ?? null);
   const [loading, setLoading] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
 
   const {
     register,
@@ -77,7 +91,9 @@ export function ApplicationCard({ application }: { application: Application }) {
 
   const statusInfo = APPLICATION_STATUS[status] ?? APPLICATION_STATUS.pending;
   const profile = application.profiles;
-  const name = profile?.full_name ?? "Estudiante";
+  const name = [profile?.first_name, profile?.last_name]
+    .filter(Boolean)
+    .join(" ") || profile?.full_name || "Estudiante";
   const avatar = profile?.avatar_url;
 
   return (
@@ -101,7 +117,19 @@ export function ApplicationCard({ application }: { application: Application }) {
               )}
             </div>
             <div>
-              <p className="font-medium text-sm">{name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-sm">{name}</p>
+                {teamMembers && teamMembers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTeamOpen(true)}
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Users className="w-3 h-3" />
+                    Ver integrantes
+                  </button>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
                 {formatRelativeDate(application.created_at)}
               </p>
@@ -150,6 +178,61 @@ export function ApplicationCard({ application }: { application: Application }) {
           </div>
         )}
       </div>
+
+      {teamOpen && teamMembers && teamMembers.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Integrantes del equipo"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
+            onClick={() => setTeamOpen(false)}
+            aria-hidden
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <h3 className="font-semibold">Integrantes del equipo</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTeamOpen(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-primary/5">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                  {getInitials(name)}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{name}</p>
+                  <p className="text-xs text-muted-foreground">Solicitante</p>
+                </div>
+              </div>
+              {teamMembers.map((m) => {
+                const memberName = [m.first_name, m.last_name]
+                  .filter(Boolean)
+                  .join(" ") || m.full_name || "Sin nombre";
+                return (
+                  <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                      {getInitials(memberName)}
+                    </div>
+                    <p className="text-sm font-medium">{memberName}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {rejectOpen && (
         <div

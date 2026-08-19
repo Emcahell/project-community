@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, Plus, X } from "lucide-react";
+import { Menu, Plus, Users, X } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -98,6 +98,16 @@ export function UserMenu({
                   >
                     <Plus className="w-4 h-4 shrink-0" />
                     Crear departamento
+                  </Link>
+                )}
+                {role === "student" && (
+                  <Link
+                    href="/dashboard/team"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <Users className="w-4 h-4 shrink-0" />
+                    Gestionar equipo
                   </Link>
                 )}
                 <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">

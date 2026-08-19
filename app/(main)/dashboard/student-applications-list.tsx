@@ -11,6 +11,7 @@ export type StudentApplication = {
   id: string;
   status: string;
   created_at: string | null;
+  student_name?: string | null;
   needs: {
     id: string;
     title: string;
@@ -99,6 +100,11 @@ export function StudentApplicationsList({
                     {need?.title}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
+                    {app.student_name && (
+                      <span className="font-medium text-primary/80">
+                        {app.student_name} ·
+                      </span>
+                    )}
                     {need?.institutions?.name}
                     {app.created_at && (
                       <> · {formatRelativeDate(app.created_at)}</>

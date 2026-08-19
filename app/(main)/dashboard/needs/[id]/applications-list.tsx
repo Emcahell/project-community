@@ -5,12 +5,20 @@ import { ApplicationCard } from "./application-card";
 import { Pagination } from "@/components/pagination";
 import { Users } from "lucide-react";
 
+type TeamMember = {
+  id: string;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
+
 type ApplicationWithProfile = {
   id: string;
+  student_id: string;
   message: string | null;
   status: string;
   created_at: string | null;
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
+  profiles: { full_name: string | null; avatar_url: string | null; first_name: string | null; last_name: string | null } | null;
 };
 
 const FILTERS = [
@@ -24,8 +32,10 @@ const PAGE_SIZE = 10;
 
 export function ApplicationsList({
   applications,
+  teamMembersByStudent = {},
 }: {
   applications: ApplicationWithProfile[];
+  teamMembersByStudent?: Record<string, TeamMember[]>;
 }) {
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -101,7 +111,11 @@ export function ApplicationsList({
       ) : (
         <div className="space-y-3">
           {visible.map((app) => (
-            <ApplicationCard key={app.id} application={app} />
+            <ApplicationCard
+              key={app.id}
+              application={app}
+              teamMembers={teamMembersByStudent[app.student_id]}
+            />
           ))}
         </div>
       )}
