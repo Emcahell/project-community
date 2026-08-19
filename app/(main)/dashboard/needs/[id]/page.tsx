@@ -31,7 +31,7 @@ export default async function NeedApplicationsPage({
 
   const { data: applications } = await supabase
     .from("applications")
-    .select(`*, profiles(full_name, avatar_url, cv_url)`)
+    .select(`*, profiles(full_name, avatar_url)`)
     .eq("need_id", id)
     .order("created_at", { ascending: false });
 

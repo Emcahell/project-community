@@ -15,6 +15,7 @@ import {
 import { CheckCircle2, XCircle, History, MapPin, Phone } from "lucide-react";
 import { formatRelativeDate } from "@/lib/utils";
 import { APPLICATION_STATUS } from "@/lib/constants";
+import { Pagination } from "@/components/pagination";
 
 type StudentApplication = {
   id: string;
@@ -170,7 +171,7 @@ export function ApplyButton({
   // ---------- Solicitud pendiente ----------
   if (latest.status === "pending") {
     return (
-      <>
+      <div className="space-y-3">
         <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-amber-500 shrink-0" />
           <div>
@@ -181,14 +182,14 @@ export function ApplyButton({
           </div>
         </div>
         {history.length > 0 && <HistoryList history={history} />}
-      </>
+      </div>
     );
   }
 
   // ---------- Solicitud rechazada: se puede volver a aplicar ----------
   if (latest.status === "rejected") {
     return (
-      <>
+      <div className="space-y-3">
         <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-5">
           <div className="flex items-center gap-3 mb-2">
             <XCircle className="w-5 h-5 text-red-600 dark:text-red-300 shrink-0" />
@@ -230,7 +231,7 @@ export function ApplyButton({
           )}
         </div>
         {history.length > 0 && <HistoryList history={history} />}
-      </>
+      </div>
     );
   }
 
@@ -301,6 +302,11 @@ function ApplyForm({
 }
 
 function HistoryList({ history }: { history: StudentApplication[] }) {
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 5;
+  const start = (page - 1) * PAGE_SIZE;
+  const visible = history.slice(start, start + PAGE_SIZE);
+
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-3">
       <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-widest">
@@ -308,7 +314,7 @@ function HistoryList({ history }: { history: StudentApplication[] }) {
         Historial de solicitudes
       </p>
       <div className="space-y-2.5">
-        {history.map((app) => {
+        {visible.map((app) => {
           const statusInfo =
             APPLICATION_STATUS[app.status] ?? APPLICATION_STATUS.pending;
           return (
@@ -334,6 +340,14 @@ function HistoryList({ history }: { history: StudentApplication[] }) {
           );
         })}
       </div>
+      {history.length > PAGE_SIZE && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={history.length}
+          onChange={setPage}
+        />
+      )}
     </div>
   );
 }

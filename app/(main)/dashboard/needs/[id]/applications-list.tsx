@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ApplicationCard } from "./application-card";
+import { Pagination } from "@/components/pagination";
 import { Users } from "lucide-react";
 
 type ApplicationWithProfile = {
@@ -19,12 +20,15 @@ const FILTERS = [
   { value: "rejected", label: "Rechazadas" },
 ];
 
+const PAGE_SIZE = 10;
+
 export function ApplicationsList({
   applications,
 }: {
   applications: ApplicationWithProfile[];
 }) {
   const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
   const counts = {
     all: applications.length,
@@ -36,6 +40,7 @@ export function ApplicationsList({
   const filtered = applications.filter(
     (a) => filter === "all" || a.status === filter
   );
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   if (applications.length === 0) {
     return (
@@ -60,7 +65,10 @@ export function ApplicationsList({
           return (
             <button
               key={f.value}
-              onClick={() => setFilter(f.value)}
+              onClick={() => {
+                setFilter(f.value);
+                setPage(1);
+              }}
               className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
                 filter === f.value
                   ? "bg-background text-foreground shadow-sm"
@@ -92,9 +100,20 @@ export function ApplicationsList({
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((app) => (
+          {visible.map((app) => (
             <ApplicationCard key={app.id} application={app} />
           ))}
+        </div>
+      )}
+
+      {filtered.length > PAGE_SIZE && (
+        <div className="mt-4">
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={filtered.length}
+            onChange={setPage}
+          />
         </div>
       )}
     </>

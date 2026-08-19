@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getInitials, formatRelativeDate } from "@/lib/utils";
 import { APPLICATION_STATUS } from "@/lib/constants";
+import { Pagination } from "@/components/pagination";
 
 export type StudentApplication = {
   id: string;
@@ -25,16 +26,20 @@ const STATUS_FILTERS = [
   { value: "rejected", label: "Rechazados" },
 ];
 
+const PAGE_SIZE = 5;
+
 export function StudentApplicationsList({
   applications,
 }: {
   applications: StudentApplication[];
 }) {
   const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
   const filtered = applications.filter(
     (app) => filter === "all" || app.status === filter
   );
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <>
@@ -43,7 +48,10 @@ export function StudentApplicationsList({
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
-            onClick={() => setFilter(f.value)}
+            onClick={() => {
+              setFilter(f.value);
+              setPage(1);
+            }}
             className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
               filter === f.value
                 ? "bg-background text-foreground shadow-sm border border-border/50"
@@ -63,7 +71,7 @@ export function StudentApplicationsList({
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((app) => {
+          {visible.map((app) => {
             const need = app.needs;
             const appStatus =
               APPLICATION_STATUS[app.status] ?? APPLICATION_STATUS.pending;
@@ -108,6 +116,17 @@ export function StudentApplicationsList({
               </Link>
             );
           })}
+        </div>
+      )}
+
+      {filtered.length > PAGE_SIZE && (
+        <div className="mt-4">
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={filtered.length}
+            onChange={setPage}
+          />
         </div>
       )}
     </>
