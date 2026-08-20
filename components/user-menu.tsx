@@ -89,40 +89,44 @@ export function UserMenu({
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="p-4 space-y-3 overflow-y-auto">
-                {role === "institution" && (
-                  <Link
-                    href="/dashboard/departments"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
-                  >
-                    <Plus className="w-4 h-4 shrink-0" />
-                    Crear departamento
-                  </Link>
-                )}
-                {role === "student" && (
-                  <Link
-                    href="/dashboard/team"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
-                  >
-                    <Users className="w-4 h-4 shrink-0" />
-                    Gestionar equipo
-                  </Link>
-                )}
-                <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
-                  <span className="text-sm font-medium">Tema</span>
-                  <ThemeToggle />
+              <div className="flex flex-col h-full">
+                <div className="p-4 space-y-3 overflow-y-auto flex-1">
+                  {role === "institution" && (
+                    <Link
+                      href="/dashboard/departments"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+                    >
+                      <Plus className="w-4 h-4 shrink-0" />
+                      Crear departamento
+                    </Link>
+                  )}
+                  {role === "student" && (
+                    <Link
+                      href="/dashboard/team"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+                    >
+                      <Users className="w-4 h-4 shrink-0" />
+                      Gestionar equipo
+                    </Link>
+                  )}
+                  <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
+                    <span className="text-sm font-medium">Tema</span>
+                    <ThemeToggle />
+                  </div>
                 </div>
-                <form action={logout}>
-                  <Button
-                    variant="outline"
-                    className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                    type="submit"
-                  >
-                    Salir
-                  </Button>
-                </form>
+                <div className="p-4 border-t border-border">
+                  <form action={logout}>
+                    <Button
+                      variant="outline"
+                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                      type="submit"
+                    >
+                      Salir
+                    </Button>
+                  </form>
+                </div>
               </div>
             </div>
           </div>,

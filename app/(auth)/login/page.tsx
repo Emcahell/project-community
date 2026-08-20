@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { login } from "@/app/actions/auth";
 import { loginSchema, type LoginValues } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Building2, Handshake, Sparkles, Eye, EyeOff } from "lucide-react";
+import { GraduationCap, Building2, Handshake, Sparkles, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const searchParams = useSearchParams();
+  const passwordChanged = searchParams.get("password_changed") === "true";
   const {
     register,
     handleSubmit,
@@ -173,6 +176,17 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {passwordChanged && (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <p className="text-sm text-emerald-700 font-medium">
+                      Tu contraseña fue cambiada exitosamente. Ya puedes iniciar sesión.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {errors.root && (
                 <div className="rounded-xl bg-destructive/8 border border-destructive/20 px-3.5 py-2.5">

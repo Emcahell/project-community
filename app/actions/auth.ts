@@ -80,7 +80,11 @@ export async function resetPassword(values: ForgotPasswordValues) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
 
   const supabase = await createClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const siteUrl =
+    process.env.SITE_URL ??
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
   const { error } = await supabase.auth.resetPasswordForEmail(
     parsed.data.email,
     {
@@ -88,7 +92,15 @@ export async function resetPassword(values: ForgotPasswordValues) {
     },
   );
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.message.includes("rate limit")) {
+      return {
+        error:
+          "Se alcanzó el límite de envío de correos. Intenta de nuevo en unos minutos.",
+      };
+    }
+    return { error: error.message };
+  }
 
   return { success: true };
 }
@@ -105,5 +117,7 @@ export async function updatePassword(values: ResetPasswordValues) {
 
   if (error) return { error: error.message };
 
-  redirect("/dashboard");
+  // Cerrar sesión y redirigir al login
+  await supabase.auth.signOut();
+  redirect("/login?password_changed=true");
 }
