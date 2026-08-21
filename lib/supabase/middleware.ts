@@ -51,11 +51,42 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute = pathname === "/login" || pathname === "/register";
   const isDashboardRoute = pathname.startsWith("/dashboard");
   const isAdminRoute = pathname.startsWith("/admin");
+  const isOnboardingRoute = pathname === "/onboarding";
   const isRoot = pathname === "/";
+
+  // Verificar onboarding para estudiantes e instituciones
+  let needsOnboarding = false;
+  if (user && role !== "admin" && !isOnboardingRoute) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .single();
+    if (profile && !profile.onboarding_completed) {
+      needsOnboarding = true;
+    }
+  }
 
   // Usuario no autenticado intentando acceder a rutas protegidas
   if (!user && (isRoot || isDashboardRoute || isAdminRoute)) {
     return redirect(request, "/login");
+  }
+
+  // Usuario sin onboarding completo → redirigir a onboarding
+  if (user && needsOnboarding && !isOnboardingRoute && !isAuthRoute) {
+    return redirect(request, "/onboarding");
+  }
+
+  // Usuario en onboarding pero ya completó → redirigir a dashboard
+  if (user && isOnboardingRoute && role !== "admin") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .single();
+    if (profile?.onboarding_completed) {
+      return redirect(request, "/dashboard");
+    }
   }
 
   // Usuario autenticado intentando acceder a login/register

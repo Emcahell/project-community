@@ -32,7 +32,22 @@ export async function login(values: LoginValues) {
   }
 
   const role = authData.user?.user_metadata?.role as string | undefined;
-  redirect(role === "admin" ? "/admin" : "/dashboard");
+
+  // Admin siempre va a /admin
+  if (role === "admin") redirect("/admin");
+
+  // Verificar si completó el onboarding
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed")
+    .eq("id", authData.user.id)
+    .single();
+
+  if (profile && !profile.onboarding_completed) {
+    redirect("/onboarding");
+  }
+
+  redirect("/dashboard");
 }
 
 export async function register(values: RegisterValues) {
@@ -62,6 +77,22 @@ export async function register(values: RegisterValues) {
       },
     },
   });
+
+  if (error) return { error: error.message };
+
+  // Nuevo registro → redirigir a onboarding
+  redirect("/onboarding");
+}
+
+export async function completeOnboarding() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ onboarding_completed: true })
+    .eq("id", user.id);
 
   if (error) return { error: error.message };
 
