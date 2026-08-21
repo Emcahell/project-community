@@ -1,4 +1,4 @@
-## Proyecto Community
+## Proyecto Comunidad
 
 Plataforma web para conectar estudiantes de informática de la UPTYAB y comunidades (instituciones públicas).
 
@@ -15,6 +15,6 @@ Plataforma web para conectar estudiantes de informática de la UPTYAB y comunida
 - Ahorrar tiempo en la búsqueda de instituciones que necesiten servicios tecnológicos (sin necesidad de visitar cada una).
 - Fomentar el desarrollo de proyectos tecnológicos que beneficien a la comunidad.
 
-## Quiénes están detrás de Community
+## Quiénes están detrás de Comunidad
 
 El proyecto está siendo desarrollado por [Emmanuel Castro](https://github.com/Emcahell) y [Wilberk Ledezma](https://github.com/webzma), estudiantes de la Universidad Politécnica Territorial de Yaracuy 'Aristides Bastidas' (UPTYAB) de la carrera de Informática.

@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
               <span className="text-primary-foreground text-[10px] font-bold">C</span>
             </div>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-              Community
+              Comunidad
             </span>
           </div>
           <h1 className="text-2xl font-bold">Nueva contraseña</h1>

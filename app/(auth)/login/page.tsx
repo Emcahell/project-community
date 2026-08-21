@@ -58,7 +58,7 @@ export default function LoginPage() {
             <span className="text-white text-sm font-bold">C</span>
           </div>
           <div className="flex flex-col leading-none">
-            <span className="text-white font-bold text-base">Community</span>
+            <span className="text-white font-bold text-base">Comunidad</span>
             <span className="text-white/50 text-[9px] uppercase tracking-[0.12em] font-medium">
               UPTYAB
             </span>
@@ -102,7 +102,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-white/30 text-xs relative z-10">
-          © 2025 UPTYAB Community
+          © 2025 UPTYAB
         </p>
       </div>
 
@@ -115,7 +115,7 @@ export default function LoginPage() {
               <span className="text-white text-sm font-bold">C</span>
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-bold text-sm">Community</span>
+              <span className="font-bold text-sm">Comunidad</span>
               <span className="text-[9px] text-muted-foreground uppercase tracking-[0.12em]">
                 UPTYAB
               </span>

@@ -7,7 +7,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Community — UPTYAB",
+  title: "Comunidad — UPTYAB",
   description:
     "Plataforma que conecta estudiantes de informática de la UPTYAB con instituciones públicas que necesitan proyectos tecnológicos.",
 };

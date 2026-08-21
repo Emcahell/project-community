@@ -76,7 +76,7 @@ function StudentContent() {
         <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <GraduationCap className="w-7 h-7 text-primary" />
         </div>
-        <h1 className="text-2xl font-bold">¡Bienvenido a Community!</h1>
+        <h1 className="text-2xl font-bold">¡Bienvenido a Comunidad!</h1>
         <p className="text-muted-foreground mt-2 text-sm">
           Antes de comenzar, te explicamos cómo funciona la plataforma.
         </p>
@@ -159,7 +159,7 @@ function InstitutionContent() {
         <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Building2 className="w-7 h-7 text-primary" />
         </div>
-        <h1 className="text-2xl font-bold">¡Bienvenido a Community!</h1>
+        <h1 className="text-2xl font-bold">¡Bienvenido a Comunidad!</h1>
         <p className="text-muted-foreground mt-2 text-sm">
           Tu institución ya está registrada. Esto es lo que necesitas saber.
         </p>
@@ -208,7 +208,7 @@ function InstitutionContent() {
             <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
             <div>
               <h4 className="font-semibold text-sm text-emerald-800 dark:text-emerald-300">
-                ¿Por qué usar Community?
+                ¿Por qué usar Comunidad?
               </h4>
               <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1">
                 Esta plataforma fomenta el crecimiento tecnológico al conectar

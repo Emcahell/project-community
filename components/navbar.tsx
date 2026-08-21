@@ -37,7 +37,7 @@ export async function Navbar() {
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-[15px] tracking-tight">
-                Community
+                Comunidad
               </span>
               <span className="text-[9px] text-muted-foreground uppercase tracking-[0.12em] font-medium">
                 UPTYAB

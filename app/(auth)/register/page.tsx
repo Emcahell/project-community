@@ -66,7 +66,7 @@ export default function RegisterPage() {
             <span className="text-white text-sm font-bold">C</span>
           </div>
           <div className="flex flex-col leading-none">
-            <span className="text-white font-bold text-base">Community</span>
+            <span className="text-white font-bold text-base">Comunidad</span>
             <span className="text-white/50 text-[9px] uppercase tracking-[0.12em] font-medium">UPTYAB</span>
           </div>
         </Link>
@@ -99,7 +99,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <p className="text-white/30 text-xs relative z-10">© 2025 UPTYAB Community</p>
+        <p className="text-white/30 text-xs relative z-10">© 2025 UPTYAB</p>
       </div>
 
       {/* Right form panel */}
@@ -111,7 +111,7 @@ export default function RegisterPage() {
               <span className="text-white text-sm font-bold">C</span>
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-bold text-sm">Community</span>
+              <span className="font-bold text-sm">Comunidad</span>
               <span className="text-[9px] text-muted-foreground uppercase tracking-[0.12em]">UPTYAB</span>
             </div>
           </div>
