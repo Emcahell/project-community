@@ -138,8 +138,8 @@ export default async function InstitutionDetailPage({
       {schedule && schedule.days && schedule.days.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-6 mb-6">
           <h2 className="text-sm font-semibold mb-4">Horario de atención</h2>
-          <div className="flex items-center gap-4">
-            <div className="flex gap-1.5">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
               {Object.entries(DAY_LABELS).map(([key, label]) => (
                 <span
                   key={key}

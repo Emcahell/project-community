@@ -116,9 +116,12 @@ export function ApplicationCard({
                 </div>
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-sm">{name}</p>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs text-muted-foreground">
+                  {formatRelativeDate(application.created_at)}
+                </p>
                 {teamMembers && teamMembers.length > 0 && (
                   <button
                     type="button"
@@ -130,9 +133,6 @@ export function ApplicationCard({
                   </button>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {formatRelativeDate(application.created_at)}
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">

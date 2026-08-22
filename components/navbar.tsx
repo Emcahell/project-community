@@ -2,7 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
-import { MobileNav } from "@/components/mobile-nav";
 import { NotificationBell } from "@/components/notification-bell";
 
 export async function Navbar() {
@@ -47,7 +46,7 @@ export async function Navbar() {
 
           <nav className="flex items-center gap-2">
             {user ? (
-              <div className="hidden md:flex items-center gap-1.5">
+              <div className="flex items-center gap-3">
                 {role !== "admin" && <NotificationBell userId={user.id} />}
                 <UserMenu avatarUrl={avatarUrl} fullName={fullName} role={role} />
               </div>
@@ -72,14 +71,7 @@ export async function Navbar() {
         </div>
       </header>
 
-      {user && (
-        <MobileNav
-          userId={user.id}
-          avatarUrl={avatarUrl}
-          fullName={fullName}
-          role={role}
-        />
-      )}
+
     </>
   );
 }
