@@ -34,25 +34,43 @@ export function UserMenu({
   return (
     <>
       <div className="flex items-center gap-1.5">
-        <Link
-          href="/dashboard/profile"
-          className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-border hover:ring-primary/40 transition-all"
-          title="Editar perfil"
-        >
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={fullName ?? "Perfil"}
-              fill
-              className="object-cover"
-              unoptimized
-            />
-          ) : (
-            <div className="w-full h-full bg-linear-to-br from-primary/20 to-violet-500/20 text-primary flex items-center justify-center text-[11px] font-bold select-none">
-              {getInitials(fullName)}
-            </div>
-          )}
-        </Link>
+        {role !== "admin" ? (
+          <Link
+            href="/dashboard/profile"
+            className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 ring-2 ring-border hover:ring-primary/40 transition-all"
+            title="Editar perfil"
+          >
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={fullName ?? "Perfil"}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full bg-linear-to-br from-primary/20 to-violet-500/20 text-primary flex items-center justify-center text-[11px] font-bold select-none">
+                {getInitials(fullName)}
+              </div>
+            )}
+          </Link>
+        ) : (
+          <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={fullName ?? "Admin"}
+                fill
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full bg-linear-to-br from-primary/20 to-violet-500/20 text-primary flex items-center justify-center text-[11px] font-bold select-none">
+                {getInitials(fullName)}
+              </div>
+            )}
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setOpen(true)}

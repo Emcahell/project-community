@@ -48,7 +48,7 @@ export async function Navbar() {
           <nav className="flex items-center gap-2">
             {user ? (
               <div className="hidden md:flex items-center gap-1.5">
-                <NotificationBell userId={user.id} />
+                {role !== "admin" && <NotificationBell userId={user.id} />}
                 <UserMenu avatarUrl={avatarUrl} fullName={fullName} role={role} />
               </div>
             ) : (

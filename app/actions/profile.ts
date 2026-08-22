@@ -157,3 +157,55 @@ export async function verifyInstitution(institutionId: string, verified: boolean
   revalidatePath("/admin");
   return { success: true };
 }
+
+export async function toggleInstitutionDisabled(institutionId: string, disabled: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") return { error: "Sin permisos." };
+
+  const { error } = await supabase
+    .from("institutions")
+    .update({ is_disabled: disabled })
+    .eq("id", institutionId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function toggleStudentDisabled(studentId: string, disabled: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") return { error: "Sin permisos." };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ is_disabled: disabled })
+    .eq("id", studentId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  return { success: true };
+}
