@@ -45,8 +45,8 @@ export function UserMenu({
                 src={avatarUrl}
                 alt={fullName ?? "Perfil"}
                 fill
+                sizes="40px"
                 className="object-cover"
-                unoptimized
               />
             ) : (
               <div className="w-full h-full bg-linear-to-br from-primary/20 to-violet-500/20 text-primary flex items-center justify-center text-[11px] font-bold select-none">
@@ -61,8 +61,8 @@ export function UserMenu({
                 src={avatarUrl}
                 alt={fullName ?? "Admin"}
                 fill
+                sizes="40px"
                 className="object-cover"
-                unoptimized
               />
             ) : (
               <div className="w-full h-full bg-linear-to-br from-primary/20 to-violet-500/20 text-primary flex items-center justify-center text-[11px] font-bold select-none">

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
 import {
   studentProfileSchema,
   institutionProfileSchema,
+  ALLOWED_AVATAR_TYPES,
   MAX_AVATAR_SIZE,
   WEEK_DAYS,
   TRACKS,
@@ -84,7 +85,7 @@ export function ProfileForm({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors },
   } = useForm<ProfileFormData>({
@@ -111,8 +112,8 @@ export function ProfileForm({
           },
   });
 
-  const selectedDays = watch("schedule.days") ?? [];
-  const track = watch("track") ?? "";
+  const selectedDays = useWatch({ control, name: "schedule.days" }) ?? [];
+  const track = useWatch({ control, name: "track" }) ?? "";
 
   function toggleDay(day: string) {
     const next = selectedDays.includes(day)
@@ -136,6 +137,11 @@ export function ProfileForm({
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!(ALLOWED_AVATAR_TYPES as readonly string[]).includes(file.type)) {
+      toast.error("El logo debe ser una imagen PNG, JPG o WEBP.");
+      e.target.value = "";
+      return;
+    }
     if (file.size > MAX_AVATAR_SIZE) {
       toast.error("El logo no puede superar 4 MB.");
       e.target.value = "";
@@ -214,7 +220,7 @@ export function ProfileForm({
               ref={avatarInputRef}
               name="avatar"
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
+              accept="image/jpeg,image/png,image/webp"
               className="hidden"
               onChange={handleAvatarChange}
             />

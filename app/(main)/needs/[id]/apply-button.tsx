@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useForm, type UseFormRegister, type FieldErrors } from "react-hook-form";
+import { useForm, useWatch, type UseFormRegister, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { applyToNeed } from "@/app/actions/applications";
 import {
   applicationSchema,
   MAX_APPLICATION_MESSAGE,
@@ -33,14 +32,14 @@ type InstitutionInfo = {
 export function ApplyButton({
   needId,
   needStatus,
-  user,
+  isLoggedIn,
   userRole,
   applications,
   institution,
 }: {
   needId: string;
   needStatus: string;
-  user: User | null;
+  isLoggedIn: boolean;
   userRole: string | null;
   applications: StudentApplication[];
   institution?: InstitutionInfo | null;
@@ -52,13 +51,13 @@ export function ApplyButton({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<ApplicationValues>({
     resolver: zodResolver(applicationSchema),
     defaultValues: { message: "" },
   });
-  const message = watch("message");
+  const message = useWatch({ control, name: "message" }) ?? "";
 
   const latest = apps[0] ?? null;
   const history = apps.slice(1);
@@ -66,26 +65,18 @@ export function ApplyButton({
   async function handleApply(values: ApplicationValues) {
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("applications")
-      .insert({
-        need_id: needId,
-        student_id: user!.id,
-        message: values.message.trim() || null,
-      })
-      .select("id, status, rejection_reason, created_at")
-      .single();
-    if (error) {
-      setError("Ocurrió un error al enviar tu solicitud.");
-    } else if (data) {
-      setApps((prev) => [data, ...prev]);
+    const result = await applyToNeed(needId, values);
+    if (result.error !== undefined) {
+      setError(result.error);
+    } else {
+      const created = result.application;
+      setApps((prev) => [created, ...prev]);
       setShowForm(false);
     }
     setLoading(false);
   }
 
-  if (!user) {
+  if (!isLoggedIn) {
     return (
       <div className="rounded-xl border border-border bg-card p-6 text-center">
         <p className="text-sm text-muted-foreground mb-4">
@@ -262,7 +253,7 @@ function ApplyForm({
       <h3 className="font-semibold text-sm">Tu solicitud</h3>
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium">
+          <label htmlFor="application-message" className="text-sm font-medium">
             Mensaje <span className="text-muted-foreground font-normal">(opcional)</span>
           </label>
           <span
@@ -276,6 +267,7 @@ function ApplyForm({
           </span>
         </div>
         <textarea
+          id="application-message"
           placeholder="Cuéntale a la institución por qué eres el indicado para este proyecto..."
           rows={4}
           {...register("message")}

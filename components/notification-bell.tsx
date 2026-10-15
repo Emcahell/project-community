@@ -22,13 +22,32 @@ export function NotificationBell({ userId }: { userId: string }) {
     }
 
     refresh();
-    const interval = setInterval(refresh, 30000);
+
+    // Tiempo real: se actualiza al instante cuando llega o se lee una
+    // notificación (requiere la tabla en la publicación `supabase_realtime`).
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `recipient_id=eq.${userId}`,
+        },
+        () => refresh(),
+      )
+      .subscribe();
+
+    // Respaldo por si Realtime no está habilitado
+    const interval = setInterval(refresh, 60000);
     const onFocus = () => refresh();
     window.addEventListener("focus", onFocus);
     return () => {
       active = false;
       clearInterval(interval);
       window.removeEventListener("focus", onFocus);
+      supabase.removeChannel(channel);
     };
   }, [userId]);
 
@@ -36,7 +55,7 @@ export function NotificationBell({ userId }: { userId: string }) {
     <Link
       href="/dashboard/notifications"
       className="relative w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-      aria-label="Notificaciones"
+      aria-label={unread > 0 ? `Notificaciones (${unread} sin leer)` : "Notificaciones"}
       title="Notificaciones"
     >
       <Bell className="w-4 h-4" />

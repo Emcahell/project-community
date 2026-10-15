@@ -4,7 +4,7 @@ import { MapPin, ArrowRight, BadgeCheck, Clock } from "lucide-react";
 import { formatRelativeDate, getInitials } from "@/lib/utils";
 import { NEED_STATUS } from "@/lib/constants";
 
-type NeedWithInstitution = {
+export type NeedCardData = {
   id: string;
   title: string;
   description: string;
@@ -19,7 +19,7 @@ type NeedWithInstitution = {
   } | null;
 };
 
-export function NeedCard({ need }: { need: NeedWithInstitution }) {
+export function NeedCard({ need }: { need: NeedCardData }) {
   const institutionName = need.institutions?.name ?? "";
   const institutionAvatar = need.institutions?.profiles?.avatar_url ?? null;
   const status = NEED_STATUS[need.status] ?? NEED_STATUS.open;
@@ -37,8 +37,8 @@ export function NeedCard({ need }: { need: NeedWithInstitution }) {
                 src={institutionAvatar}
                 alt={institutionName}
                 fill
+                sizes="36px"
                 className="object-cover"
-                unoptimized
               />
             ) : (
               <div className="w-full h-full bg-linear-to-br from-primary/15 to-violet-500/10 flex items-center justify-center text-[11px] font-bold text-primary">
@@ -50,7 +50,10 @@ export function NeedCard({ need }: { need: NeedWithInstitution }) {
             <p className="flex items-center gap-1 text-xs font-semibold truncate text-foreground/90">
               {institutionName}
               {need.institutions?.verified && (
-                <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                <BadgeCheck
+                  className="w-3.5 h-3.5 text-sky-500 shrink-0"
+                  aria-label="Institución verificada"
+                />
               )}
             </p>
             {need.institutions?.address && (

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { type ActionResult, failure } from "@/lib/errors";
 import {
   loginSchema,
   registerSchema,
@@ -25,23 +26,29 @@ export async function login(values: LoginValues) {
   });
 
   if (error) {
-    if (error.message === "Invalid login credentials") {
+    if (error.code === "invalid_credentials" || error.message === "Invalid login credentials") {
       return { error: "Correo o contraseña incorrectos." };
     }
-    return { error: error.message };
+    if (error.code === "email_not_confirmed") {
+      return { error: "Debes confirmar tu correo antes de iniciar sesión." };
+    }
+    return failure("login", error, "No se pudo iniciar sesión. Intenta de nuevo.");
   }
 
-  const role = authData.user?.user_metadata?.role as string | undefined;
-
-  // Admin siempre va a /admin
-  if (role === "admin") redirect("/admin");
-
-  // Verificar si completó el onboarding
+  // El rol se lee de la base de datos, no de user_metadata (editable por el usuario)
   const { data: profile } = await supabase
     .from("profiles")
-    .select("onboarding_completed")
+    .select("role, onboarding_completed, is_disabled")
     .eq("id", authData.user.id)
     .single();
+
+  if (profile?.is_disabled) {
+    await supabase.auth.signOut();
+    return { error: "Tu cuenta está inhabilitada. Contacta al administrador." };
+  }
+
+  // Admin siempre va a /admin
+  if (profile?.role === "admin") redirect("/admin");
 
   if (profile && !profile.onboarding_completed) {
     redirect("/onboarding");
@@ -78,7 +85,15 @@ export async function register(values: RegisterValues) {
     },
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === "user_already_exists" || error.code === "email_exists") {
+      return { error: "Ya existe una cuenta con ese correo." };
+    }
+    if (error.code === "weak_password") {
+      return { error: "La contraseña es demasiado débil. Usa una más segura." };
+    }
+    return failure("register", error, "No se pudo crear la cuenta. Intenta de nuevo.");
+  }
 
   // Nuevo registro → redirigir a onboarding
   redirect("/onboarding");
@@ -94,7 +109,7 @@ export async function completeOnboarding() {
     .update({ onboarding_completed: true })
     .eq("id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return failure("completeOnboarding", error);
 
   redirect("/dashboard");
 }
@@ -105,7 +120,7 @@ export async function logout() {
   redirect("/login");
 }
 
-export async function resetPassword(values: ForgotPasswordValues) {
+export async function resetPassword(values: ForgotPasswordValues): Promise<ActionResult> {
   const parsed = forgotPasswordSchema.safeParse(values);
   if (!parsed.success)
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
@@ -130,10 +145,10 @@ export async function resetPassword(values: ForgotPasswordValues) {
           "Se alcanzó el límite de envío de correos. Intenta de nuevo en unos minutos.",
       };
     }
-    return { error: error.message };
+    return failure("resetPassword", error, "No se pudo enviar el correo. Intenta de nuevo.");
   }
 
-  return { success: true };
+  return { success: true as const };
 }
 
 export async function updatePassword(values: ResetPasswordValues) {
@@ -146,7 +161,12 @@ export async function updatePassword(values: ResetPasswordValues) {
     password: parsed.data.password,
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === "same_password") {
+      return { error: "La nueva contraseña debe ser distinta de la anterior." };
+    }
+    return failure("updatePassword", error, "No se pudo actualizar la contraseña. El enlace puede haber expirado.");
+  }
 
   // Cerrar sesión y redirigir al login
   await supabase.auth.signOut();

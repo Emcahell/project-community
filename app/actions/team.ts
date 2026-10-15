@@ -1,63 +1,89 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { authorize } from "@/lib/auth";
+import { type ActionResult, failure } from "@/lib/errors";
+import { getTeamMemberIds, type MemberProfile } from "@/lib/team";
+import { teamSchema } from "@/lib/validations";
 
-export async function saveTeam(memberIds: string[]) {
-  const supabase = await createClient();
+const emailSchema = z.string().trim().toLowerCase().email();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
+/**
+ * Busca un estudiante por su correo EXACTO. No se permiten búsquedas
+ * parciales para que nadie pueda listar los correos de otros estudiantes,
+ * y solo se devuelven nombre e id (nunca el correo).
+ */
+export async function findStudentByEmail(
+  email: string,
+): Promise<{ error: string } | { error?: undefined; student: MemberProfile | null }> {
+  const parsed = emailSchema.safeParse(email);
+  if (!parsed.success) return { student: null };
 
-  const { data: profile } = await supabase
+  const auth = await authorize("student");
+  if (auth.error !== undefined) return { error: auth.error };
+  const { supabase, user } = auth.session;
+
+  const { data, error } = await supabase
     .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+    .select("id, full_name, first_name, last_name")
+    .eq("role", "student")
+    .ilike("email", parsed.data.replace(/[%_\\]/g, "\\$&"))
+    .neq("id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (error) return failure("findStudentByEmail", error);
 
-  if (profile?.role !== "student") return { error: "No autorizado" };
+  return { student: (data as MemberProfile | null) ?? null };
+}
 
-  // Fetch current team (both directions) to compute diff
-  const { data: ownedRows } = await supabase
-    .from("team_members")
-    .select("member_id")
-    .eq("owner_id", user.id);
-  const { data: memberOfRows } = await supabase
-    .from("team_members")
-    .select("owner_id")
-    .eq("member_id", user.id);
+export async function saveTeam(memberIds: string[]): Promise<ActionResult> {
+  const parsed = teamSchema.safeParse([...new Set(memberIds)]);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Equipo inválido." };
 
-  const currentIds = new Set([
-    ...(ownedRows ?? []).map((r) => r.member_id),
-    ...(memberOfRows ?? []).map((r) => r.owner_id),
-  ]);
-  const desiredIds = new Set(memberIds);
+  const auth = await authorize("student");
+  if (auth.error !== undefined) return { error: auth.error };
+  const { supabase, user } = auth.session;
 
-  // Members to add (in desired but not in current)
-  const toAdd = memberIds.filter((id) => !currentIds.has(id));
-  // Members to remove (in current but not in desired)
-  const toRemove = [...currentIds].filter((id) => !desiredIds.has(id));
+  const desired = parsed.data.filter((id) => id !== user.id);
 
-  // Remove deleted members (only from owner side; bidirectional trigger handles the inverse)
-  for (const memberId of toRemove) {
+  // Solo se pueden agregar estudiantes existentes y habilitados
+  if (desired.length > 0) {
+    const { data: valid } = await supabase
+      .from("profiles")
+      .select("id, is_disabled")
+      .in("id", desired)
+      .eq("role", "student");
+    const validIds = new Set(
+      (valid ?? []).filter((p) => !p.is_disabled).map((p) => p.id as string),
+    );
+    if (desired.some((id) => !validIds.has(id))) {
+      return { error: "Alguno de los integrantes no es un estudiante válido." };
+    }
+  }
+
+  const current = new Set(await getTeamMemberIds(supabase, user.id));
+  const desiredSet = new Set(desired);
+  const toAdd = desired.filter((id) => !current.has(id));
+  const toRemove = [...current].filter((id) => !desiredSet.has(id));
+
+  if (toRemove.length > 0) {
+    // La relación es bidireccional: borrar en ambos sentidos
+    const [asOwner, asMember] = await Promise.all([
+      supabase.from("team_members").delete().eq("owner_id", user.id).in("member_id", toRemove),
+      supabase.from("team_members").delete().eq("member_id", user.id).in("owner_id", toRemove),
+    ]);
+    const error = asOwner.error ?? asMember.error;
+    if (error) return failure("saveTeam.remove", error, "Error al eliminar integrantes.");
+  }
+
+  if (toAdd.length > 0) {
     const { error } = await supabase
       .from("team_members")
-      .delete()
-      .eq("owner_id", user.id)
-      .eq("member_id", memberId);
-    if (error) return { error: "Error al eliminar integrante: " + error.message };
+      .insert(toAdd.map((id) => ({ owner_id: user.id, member_id: id })));
+    if (error) return failure("saveTeam.add", error, "Error al agregar integrantes.");
   }
 
-  // Add new members (only truly new ones)
-  if (toAdd.length > 0) {
-    const rows = toAdd.map((id) => ({
-      owner_id: user.id,
-      member_id: id,
-    }));
-    const { error } = await supabase.from("team_members").insert(rows);
-    if (error) return { error: "Error al agregar integrante: " + error.message };
-  }
-
-  return { success: true };
+  revalidatePath("/dashboard", "layout");
+  return { success: true as const };
 }

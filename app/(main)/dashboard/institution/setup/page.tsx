@@ -1,20 +1,19 @@
-import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth";
 import { InstitutionSetupForm } from "./institution-setup-form";
 
+export const metadata: Metadata = { title: "Configura tu institución" };
+
 export default async function InstitutionSetupPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, profile } = await requireRole("institution");
 
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .single();
+  const { data: existing } = await supabase
+    .from("institutions")
+    .select("id")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+  if (existing) redirect("/dashboard/profile");
 
   return (
     <div className="max-w-lg mx-auto">

@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createClient } from "@/lib/supabase/client";
+import { setupInstitution } from "@/app/actions/profile";
 import {
   institutionSetupSchema,
+  ALLOWED_AVATAR_TYPES,
   MAX_AVATAR_SIZE,
   WEEK_DAYS,
   type InstitutionSetupValues,
@@ -32,7 +33,7 @@ export function InstitutionSetupForm({
     register,
     handleSubmit,
     setError,
-    watch,
+    control,
     setValue,
     formState: { errors, isSubmitting },
   } =  useForm<InstitutionSetupValues>({
@@ -48,7 +49,7 @@ export function InstitutionSetupForm({
     },
   });
 
-  const selectedDays = watch("schedule.days") ?? [];
+  const selectedDays = useWatch({ control, name: "schedule.days" }) ?? [];
 
   function toggleDay(day: string) {
     const next = selectedDays.includes(day)
@@ -60,6 +61,11 @@ export function InstitutionSetupForm({
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!(ALLOWED_AVATAR_TYPES as readonly string[]).includes(file.type)) {
+      setError("root", { message: "El logo debe ser una imagen PNG, JPG o WEBP." });
+      e.target.value = "";
+      return;
+    }
     if (file.size > MAX_AVATAR_SIZE) {
       setError("root", { message: "El logo no puede superar 4 MB." });
       e.target.value = "";
@@ -70,87 +76,11 @@ export function InstitutionSetupForm({
   }
 
   async function onSubmit(values: InstitutionSetupValues) {
-    const supabase = createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Prevent duplicate institution creation
-    const { data: existing } = await supabase
-      .from("institutions")
-      .select("id")
-      .eq("profile_id", user.id)
-      .single();
-
-    if (existing) {
-      router.push("/dashboard");
-      router.refresh();
+    const result = await setupInstitution(values, avatarFile);
+    if (result.error) {
+      setError("root", { message: result.error });
       return;
     }
-
-    // Cambiar el correo de acceso si fue modificado
-    if (values.email !== user.email) {
-      const { error: emailError } = await supabase.auth.updateUser({
-        email: values.email,
-      });
-      if (emailError) {
-        setError("root", {
-          message:
-            emailError.code === "email_exists"
-              ? "Ese correo ya está en uso por otra cuenta."
-              : `No se pudo cambiar el correo de acceso: ${emailError.message} (${emailError.code ?? "sin código"})`,
-        });
-        return;
-      }
-    }
-
-    // Logo upload (opcional)
-    let avatarUrl: string | null = null;
-    if (avatarFile) {
-      const ext = avatarFile.name.split(".").pop();
-      const path = `${user.id}/avatar.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type });
-      if (uploadError) {
-        setError("root", { message: "Error subiendo el logo." });
-        return;
-      }
-      const { data: urlData } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(path);
-      avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-    }
-
-    const { error } = await supabase.from("institutions").insert({
-      profile_id: user.id,
-      name: values.name,
-      email: values.email,
-      description: values.description || null,
-      address: values.address || null,
-      phone: values.phone || null,
-      website: values.website || null,
-      schedule: values.schedule,
-    });
-
-    if (error) {
-      setError("root", { message: "Ocurrió un error al guardar la institución." });
-      return;
-    }
-
-    // Guardar el logo también en el perfil para navbar/dashboard
-    if (avatarUrl) {
-      await supabase
-        .from("profiles")
-        .update({ avatar_url: avatarUrl })
-        .eq("id", user.id);
-      await supabase.auth.updateUser({
-        data: { avatar_url: avatarUrl },
-      });
-    }
-
     router.push("/dashboard");
     router.refresh();
   }
@@ -197,7 +127,7 @@ export function InstitutionSetupForm({
           ref={avatarInputRef}
           name="avatar"
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={handleAvatarChange}
         />

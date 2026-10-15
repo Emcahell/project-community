@@ -1,23 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { requireRole } from "@/lib/auth";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProfileForm } from "./profile-form";
 
+export const metadata: Metadata = { title: "Mi perfil" };
+
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) redirect("/login");
+  const { supabase, user, profile } = await requireRole("student", "institution");
 
   let institution = null;
   if (profile.role === "institution") {

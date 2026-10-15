@@ -1,34 +1,22 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
+import { getDisplayName } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 import { NotificationBell } from "@/components/notification-bell";
 
 export async function Navbar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const fullName = user?.user_metadata?.full_name as string | undefined;
-
-  let avatarUrl: string | null = null;
-  let role: string | undefined;
-  if (user) {
-    const supabaseData = await supabase
-      .from("profiles")
-      .select("avatar_url, role")
-      .eq("id", user.id)
-      .single();
-    avatarUrl = supabaseData.data?.avatar_url ?? null;
-    role = supabaseData.data?.role ?? undefined;
-  }
+  const { user, profile } = await getSession();
+  const role = profile?.role;
+  const avatarUrl = profile?.avatar_url ?? null;
+  const fullName = profile ? getDisplayName(profile, "") || undefined : undefined;
+  const homeHref = !user ? "/" : role === "admin" ? "/admin" : "/dashboard";
 
   return (
     <>
       <header className="border-b border-border/60 bg-background/85 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3 group">
+          <Link href={homeHref} className="flex items-center gap-3 group" aria-label="Comunidad, ir al inicio">
             <div className="w-8 h-8 rounded-xl bg-linear-to-br from-primary to-violet-600 flex items-center justify-center shrink-0 shadow-md shadow-primary/25 group-hover:shadow-primary/40 transition-shadow">
               <span className="text-white text-sm font-bold leading-none">
                 C
@@ -47,7 +35,7 @@ export async function Navbar() {
           <nav className="flex items-center gap-2">
             {user ? (
               <div className="flex items-center gap-3">
-                {role !== "admin" && <NotificationBell userId={user.id} />}
+                {role && role !== "admin" && <NotificationBell userId={user.id} />}
                 <UserMenu avatarUrl={avatarUrl} fullName={fullName} role={role} />
               </div>
             ) : (
@@ -70,8 +58,6 @@ export async function Navbar() {
           </nav>
         </div>
       </header>
-
-
     </>
   );
 }

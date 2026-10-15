@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { updateApplicationStatus } from "@/app/actions/applications";
 import { Button } from "@/components/ui/button";
-import { getInitials, formatRelativeDate } from "@/lib/utils";
+import { getInitials, getDisplayName, formatRelativeDate } from "@/lib/utils";
 import { APPLICATION_STATUS } from "@/lib/constants";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -44,41 +45,35 @@ export function ApplicationCard({
   const [loading, setLoading] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [teamOpen, setTeamOpen] = useState(false);
+  const router = useRouter();
 
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     reset,
     formState: { errors },
   } = useForm<RejectionReasonValues>({
     resolver: zodResolver(rejectionReasonSchema),
     defaultValues: { reason: "" },
   });
-  const reasonLength = watch("reason").length;
+  const reasonLength = (useWatch({ control, name: "reason" }) ?? "").length;
 
   async function updateStatus(newStatus: "accepted" | "rejected", rejectionReason?: string) {
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("applications")
-      .update(
-        newStatus === "rejected"
-          ? { status: newStatus, rejection_reason: rejectionReason ?? null }
-          : { status: newStatus }
-      )
-      .eq("id", application.id);
+    const result = await updateApplicationStatus(application.id, newStatus, rejectionReason);
 
-    if (error) {
-      toast.error("No se pudo actualizar el estado. Intenta de nuevo.");
+    if (result.error !== undefined) {
+      toast.error(result.error);
     } else {
       setStatus(newStatus);
-      if (newStatus === "rejected") setReason(rejectionReason ?? null);
+      if (newStatus === "rejected") setReason(result.reason ?? null);
       toast.success(
         newStatus === "accepted"
           ? "Solicitud aceptada. El estudiante fue notificado."
           : "Solicitud rechazada."
       );
+      router.refresh();
     }
     setLoading(false);
   }
@@ -91,9 +86,7 @@ export function ApplicationCard({
 
   const statusInfo = APPLICATION_STATUS[status] ?? APPLICATION_STATUS.pending;
   const profile = application.profiles;
-  const name = [profile?.first_name, profile?.last_name]
-    .filter(Boolean)
-    .join(" ") || profile?.full_name || "Estudiante";
+  const name = getDisplayName(profile, "Estudiante");
   const avatar = profile?.avatar_url;
 
   return (
@@ -107,8 +100,8 @@ export function ApplicationCard({
                   src={avatar}
                   alt={name}
                   fill
+                  sizes="40px"
                   className="object-cover"
-                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-sm font-semibold text-muted-foreground">
@@ -217,9 +210,7 @@ export function ApplicationCard({
                 </div>
               </div>
               {teamMembers.map((m) => {
-                const memberName = [m.first_name, m.last_name]
-                  .filter(Boolean)
-                  .join(" ") || m.full_name || "Sin nombre";
+                const memberName = getDisplayName(m);
                 return (
                   <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg">
                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
