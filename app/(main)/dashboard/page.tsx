@@ -1,8 +1,16 @@
-import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/actions/auth";
-import { NeedCard } from "@/components/need-card";
+import { NeedCard, type NeedCardData } from "@/components/need-card";
+import { Pagination } from "@/components/pagination";
+import { StatGrid } from "@/components/stat-grid";
+import { NeedSearch } from "@/components/need-search";
+import { getSession, type CurrentProfile } from "@/lib/auth";
+import { getTeamMemberIds, getProfilesByIds } from "@/lib/team";
+import { getDisplayName } from "@/lib/utils";
+import { sanitizeSearch } from "@/lib/search";
 import {
   InstitutionNeedsList,
   INSTITUTION_NEEDS_PAGE_SIZE,
@@ -12,35 +20,31 @@ import {
   StudentApplicationsList,
   type StudentApplication,
 } from "./student-applications-list";
-import { Pagination } from "@/components/pagination";
-import { CheckCircle2 } from "lucide-react";
+
+export const metadata: Metadata = { title: "Panel" };
 
 const STUDENT_NEEDS_PAGE_SIZE = 10;
+
+type SearchParams = { [key: string]: string | string[] | undefined };
 
 function pageNumber(value: string | string[] | undefined): number {
   const n = Number(typeof value === "string" ? value : undefined);
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
+function param(value: string | string[] | undefined): string {
+  return typeof value === "string" ? value : "";
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getSession();
 
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
 
   if (!profile) {
     return (
@@ -62,13 +66,15 @@ export default async function DashboardPage({
     );
   }
 
+  if (profile.role === "admin") redirect("/admin");
+
   if (profile.role === "institution") {
     return (
       <InstitutionDashboard
         userId={user.id}
         initialName={profile.full_name ?? ""}
         initialEmail={user.email ?? ""}
-        status={typeof params.status === "string" ? params.status : "all"}
+        status={param(params.status) || "all"}
         page={pageNumber(params.page)}
       />
     );
@@ -79,6 +85,7 @@ export default async function DashboardPage({
       userId={user.id}
       profile={profile}
       needsPage={pageNumber(params.np)}
+      query={param(params.q)}
     />
   );
 }
@@ -96,13 +103,13 @@ async function InstitutionDashboard({
   status: string;
   page: number;
 }) {
-  const supabase = await createClient();
+  const { supabase } = await getSession();
 
   const { data: institution } = await supabase
     .from("institutions")
-    .select("*")
+    .select("id, name")
     .eq("profile_id", userId)
-    .single();
+    .maybeSingle();
 
   if (!institution) {
     return (
@@ -116,95 +123,70 @@ async function InstitutionDashboard({
             la conozcan y puedas publicar necesidades.
           </p>
         </div>
-        <InstitutionSetupForm
-          initialName={initialName}
-          initialEmail={initialEmail}
-        />
+        <InstitutionSetupForm initialName={initialName} initialEmail={initialEmail} />
       </div>
     );
   }
 
-  const validStatus =
-    status === "open" || status === "approved" ? status : "all";
+  const validStatus = status === "open" || status === "approved" ? status : "all";
 
-  // Conteos para las cards de estadísticas (sin traer todas las necesidades)
-  const { data: needIds } = await supabase
-    .from("needs")
-    .select("id")
-    .eq("institution_id", institution.id);
-  const needIdList = (needIds ?? []).map((n) => n.id);
-  const { data: appStatuses } =
-    needIdList.length > 0
-      ? await supabase
-          .from("applications")
-          .select("status")
-          .in("need_id", needIdList)
-      : { data: null as { status: string }[] | null };
-  const totalNeeds = needIdList.length;
-  const totalPending = (appStatuses ?? []).filter(
-    (a) => a.status === "pending"
-  ).length;
-  const totalApproved = (appStatuses ?? []).filter(
-    (a) => a.status === "accepted"
-  ).length;
+  // Conteos con `head: true`: la base cuenta sin devolver filas
+  const countApplications = (appStatus: string) =>
+    supabase
+      .from("applications")
+      .select("id, needs!inner(institution_id)", { count: "exact", head: true })
+      .eq("needs.institution_id", institution.id)
+      .eq("status", appStatus);
 
-  // Total según el filtro de estado (para la paginación)
-  let totalQuery = supabase
+  let filteredQuery = supabase
     .from("needs")
     .select("id", { count: "exact", head: true })
     .eq("institution_id", institution.id);
-  if (validStatus !== "all") totalQuery = totalQuery.eq("status", validStatus);
-  const { count: filteredTotal } = await totalQuery;
+  if (validStatus !== "all") filteredQuery = filteredQuery.eq("status", validStatus);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil((filteredTotal ?? 0) / INSTITUTION_NEEDS_PAGE_SIZE)
-  );
+  const [totalNeedsRes, pendingRes, acceptedRes, filteredRes] = await Promise.all([
+    supabase
+      .from("needs")
+      .select("id", { count: "exact", head: true })
+      .eq("institution_id", institution.id),
+    countApplications("pending"),
+    countApplications("accepted"),
+    filteredQuery,
+  ]);
+
+  const filteredTotal = filteredRes.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(filteredTotal / INSTITUTION_NEEDS_PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
   // Página actual de necesidades (solo se trae lo que se muestra)
   let needsQuery = supabase
     .from("needs")
-    .select(`*, applications(id, status), departments(name)`)
+    .select(`id, title, status, created_at, applications(id, status), departments(name)`)
     .eq("institution_id", institution.id);
   if (validStatus !== "all") needsQuery = needsQuery.eq("status", validStatus);
   const { data: needs } = await needsQuery
     .order("created_at", { ascending: false })
     .range(
       (safePage - 1) * INSTITUTION_NEEDS_PAGE_SIZE,
-      safePage * INSTITUTION_NEEDS_PAGE_SIZE - 1
+      safePage * INSTITUTION_NEEDS_PAGE_SIZE - 1,
     );
 
   return (
     <div>
-      {/* Header banner */}
       <div className="rounded-2xl border border-border bg-card px-6 py-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-1.5">
             Panel de institución
           </p>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            {institution.name}
-          </h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{institution.name}</h1>
         </div>
-        <div className="grid grid-cols-3 gap-2 shrink-0 w-full sm:w-auto">
-          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
-            <p className="text-lg font-bold tracking-tight">{totalNeeds}</p>
-            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Total</p>
-          </div>
-          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
-            <p className="text-lg font-bold tracking-tight text-amber-600">
-              {totalPending}
-            </p>
-            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Pendientes</p>
-          </div>
-          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
-            <p className="text-lg font-bold tracking-tight text-emerald-600">
-              {totalApproved}
-            </p>
-            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Aprobadas</p>
-          </div>
-        </div>
+        <StatGrid
+          stats={[
+            { label: "Necesidades", value: totalNeedsRes.count ?? 0 },
+            { label: "Pendientes", value: pendingRes.count ?? 0, tone: "warning" },
+            { label: "Aprobadas", value: acceptedRes.count ?? 0, tone: "success" },
+          ]}
+        />
       </div>
 
       <div className="flex items-center justify-between mb-4">
@@ -217,186 +199,144 @@ async function InstitutionDashboard({
         needs={(needs ?? []).map((n) => ({
           ...n,
           applications: n.applications as { id: string; status: string }[],
-          department: (n.departments as { name: string } | null)?.name ?? null,
+          department:
+            (n.departments as unknown as { name: string } | null)?.name ?? null,
         }))}
         status={validStatus}
         page={safePage}
-        total={filteredTotal ?? 0}
+        total={filteredTotal}
         baseHref="/dashboard"
       />
     </div>
   );
 }
 
+const APPLICATION_SELECT = `id, status, created_at, student_id, needs (id, title, status, institutions (id, name, address))`;
+
+type ApplicationRow = {
+  id: string;
+  status: string;
+  created_at: string | null;
+  student_id: string;
+  needs: unknown;
+};
+
 async function StudentDashboard({
   userId,
   profile,
   needsPage,
+  query,
 }: {
   userId: string;
-  profile: { full_name: string | null };
+  profile: CurrentProfile;
   needsPage: number;
+  query: string;
 }) {
-  const supabase = await createClient();
+  const { supabase } = await getSession();
 
-  // Fetch team member IDs (bidirectional)
-  const { data: ownedRows } = await supabase
-    .from("team_members")
-    .select("member_id")
-    .eq("owner_id", userId);
-  const { data: memberOfRows } = await supabase
-    .from("team_members")
-    .select("owner_id")
-    .eq("member_id", userId);
-  const teamMemberIds = [
-    ...new Set([
-      ...(ownedRows ?? []).map((r) => r.member_id),
-      ...(memberOfRows ?? []).map((r) => r.owner_id),
-    ]),
-  ];
+  const teamMemberIds = await getTeamMemberIds(supabase, userId);
 
-  // Fetch own applications
-  const { data: ownApps } = await supabase
-    .from("applications")
-    .select(`*, needs (id, title, status, institutions (id, name, address))`)
-    .eq("student_id", userId)
-    .order("created_at", { ascending: false });
-
-  // Fetch team members' applications
-  let teamApps: typeof ownApps = [];
-  if (teamMemberIds.length > 0) {
-    const { data } = await supabase
+  // Solicitudes propias + del equipo y nombres del equipo, en paralelo
+  const [{ data: ownApps }, { data: teamApps }, teamProfiles] = await Promise.all([
+    supabase
       .from("applications")
-      .select(`*, needs (id, title, status, institutions (id, name, address))`)
-      .in("student_id", teamMemberIds)
-      .order("created_at", { ascending: false });
-    teamApps = data ?? [];
-  }
+      .select(APPLICATION_SELECT)
+      .eq("student_id", userId)
+      .order("created_at", { ascending: false }),
+    teamMemberIds.length > 0
+      ? supabase
+          .from("applications")
+          .select(APPLICATION_SELECT)
+          .in("student_id", teamMemberIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as ApplicationRow[] }),
+    getProfilesByIds(supabase, teamMemberIds),
+  ]);
 
-  // Fetch team member profiles for name display
-  const teamMemberProfiles: Record<string, string> = {};
-  if (teamMemberIds.length > 0) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, full_name, first_name, last_name")
-      .in("id", teamMemberIds);
-    for (const p of data ?? []) {
-      teamMemberProfiles[p.id] =
-        [p.first_name, p.last_name].filter(Boolean).join(" ") ||
-        p.full_name ||
-        "Compañero";
-    }
-  }
-
-  // Combine: own apps first, then team apps (each tagged with student_name)
-  const ownAppIds = new Set((ownApps ?? []).map((a) => a.id));
+  const own = (ownApps ?? []) as ApplicationRow[];
+  const ownAppIds = new Set(own.map((a) => a.id));
   const applications = [
-    ...(ownApps ?? []).map((a) => ({ ...a, student_name: null as string | null })),
-    ...(teamApps ?? [])
+    ...own.map((a) => ({ ...a, student_name: null as string | null })),
+    ...((teamApps ?? []) as ApplicationRow[])
       .filter((a) => !ownAppIds.has(a.id))
       .map((a) => ({
         ...a,
-        student_name: teamMemberProfiles[a.student_id] ?? "Compañero",
+        student_name: getDisplayName(teamProfiles.get(a.student_id), "Compañero"),
       })),
-  ].sort((a, b) => {
-    const da = a.created_at ?? "";
-    const db = b.created_at ?? "";
-    return db.localeCompare(da);
-  });
+  ].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
 
-  const appliedNeedIds = new Set(
-    applications
-      ?.map((a) => (a.needs as { id: string } | null)?.id)
-      .filter(Boolean)
-  );
+  const appliedNeedIds = [
+    ...new Set(
+      applications
+        .map((a) => (a.needs as unknown as { id: string } | null)?.id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
 
-  const pending =
-    applications?.filter((a) => a.status === "pending").length ?? 0;
-  const accepted =
-    applications?.filter((a) => a.status === "accepted").length ?? 0;
+  const pending = applications.filter((a) => a.status === "pending").length;
+  const accepted = applications.filter((a) => a.status === "accepted").length;
+  const totalApplications = applications.length;
 
-  const totalApplications = applications?.length ?? 0;
+  // Necesidades abiertas de instituciones habilitadas, sin las ya solicitadas
+  const search = sanitizeSearch(query);
+  const buildNeedsQuery = (select: string, head = false) => {
+    let q = supabase
+      .from("needs")
+      .select(select, head ? { count: "exact", head: true } : { count: "exact" })
+      .eq("status", "open")
+      .not("institutions.is_disabled", "is", true);
+    if (appliedNeedIds.length > 0) {
+      q = q.not("id", "in", `(${appliedNeedIds.join(",")})`);
+    }
+    if (search) {
+      q = q.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+    }
+    return q;
+  };
 
-  // Conteo total de necesidades abiertas
-  const { count: totalOpen } = await supabase
-    .from("needs")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "open");
-
-  // Conteo de necesidades disponibles (excluyendo las ya solicitadas)
-  let availableQuery = supabase
-    .from("needs")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "open");
-  if (appliedNeedIds.size > 0) {
-    availableQuery = availableQuery.filter(
-      "id",
-      "not.in",
-      `(${[...appliedNeedIds].join(",")})`
-    );
-  }
-  const { count: availableCount } = await availableQuery;
-
+  const { count: availableCount } = await buildNeedsQuery("id, institutions!inner(is_disabled)", true);
   const availableTotal = availableCount ?? 0;
   const safeNeedsPage = Math.min(
     needsPage,
-    Math.max(1, Math.ceil(availableTotal / STUDENT_NEEDS_PAGE_SIZE))
+    Math.max(1, Math.ceil(availableTotal / STUDENT_NEEDS_PAGE_SIZE)),
   );
 
-  // Necesidades disponibles: solo la página actual, excluyendo las ya solicitadas
-  let needsQuery = supabase
-    .from("needs")
-    .select(`*, institutions (id, name, address, verified, profiles (avatar_url))`)
-    .eq("status", "open");
-  if (appliedNeedIds.size > 0) {
-    needsQuery = needsQuery.filter(
-      "id",
-      "not.in",
-      `(${[...appliedNeedIds].join(",")})`
-    );
-  }
-  const { data: openNeeds } = await needsQuery
+  const { data: openNeeds } = await buildNeedsQuery(
+    `id, title, description, status, created_at, institutions!inner (id, name, address, verified, is_disabled, profiles (avatar_url))`,
+  )
     .order("created_at", { ascending: false })
     .range(
       (safeNeedsPage - 1) * STUDENT_NEEDS_PAGE_SIZE,
-      safeNeedsPage * STUDENT_NEEDS_PAGE_SIZE - 1
+      safeNeedsPage * STUDENT_NEEDS_PAGE_SIZE - 1,
     );
+
+  const firstName = profile.first_name ?? profile.full_name?.split(" ")[0] ?? "estudiante";
+  const needsHref = search ? `/dashboard?q=${encodeURIComponent(search)}` : "/dashboard";
 
   return (
     <div>
-      {/* Header banner */}
       <div className="rounded-2xl border border-border bg-card px-6 py-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.15em] mb-1.5">
             Panel de estudiante
           </p>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Hola, {profile.full_name?.split(" ")[0] ?? "estudiante"} 👋
-          </h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Hola, {firstName} 👋</h1>
           <p className="text-muted-foreground text-sm mt-1.5">
             {totalApplications
               ? `${totalApplications} solicitud${totalApplications !== 1 ? "es" : ""} enviada${totalApplications !== 1 ? "s" : ""}`
-              : "Explora necesidades y aplica al que más te interese"}
+              : "Explora necesidades y aplica a la que más te interese"}
           </p>
         </div>
-        <div className="grid grid-cols-3 gap-2 shrink-0 w-full sm:w-auto">
-          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
-            <p className="text-lg font-bold tracking-tight">{totalApplications}</p>
-            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Total</p>
-          </div>
-          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
-            <p className="text-lg font-bold tracking-tight text-amber-600">{pending}</p>
-            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Pendientes</p>
-          </div>
-          <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-center">
-            <p className="text-lg font-bold tracking-tight text-emerald-600">{accepted}</p>
-            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">Aceptadas</p>
-          </div>
-        </div>
+        <StatGrid
+          stats={[
+            { label: "Total", value: totalApplications },
+            { label: "Pendientes", value: pending, tone: "warning" },
+            { label: "Aceptadas", value: accepted, tone: "success" },
+          ]}
+        />
       </div>
 
-      {/* Applications list */}
-      {applications && applications.length > 0 && (
+      {applications.length > 0 && (
         <>
           <h2 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-widest">
             Mis solicitudes
@@ -409,39 +349,42 @@ async function StudentDashboard({
         </>
       )}
 
-      {/* Available needs */}
-      {(totalOpen ?? 0) > 0 && (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+          Necesidades disponibles
+        </h2>
+        <NeedSearch defaultValue={search} />
+      </div>
+
+      {availableTotal === 0 ? (
+        <div className="text-center py-10 border border-dashed border-border rounded-2xl bg-muted/20">
+          <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+          <p className="text-sm font-medium">
+            {search ? "Sin resultados" : "¡Todo al día!"}
+          </p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {search
+              ? "No hay necesidades que coincidan con tu búsqueda."
+              : "No hay necesidades nuevas disponibles por ahora."}
+          </p>
+        </div>
+      ) : (
         <>
-          <h2 className="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-widest">
-            Necesidades disponibles
-          </h2>
-          {availableTotal === 0 ? (
-            <div className="text-center py-10 border border-dashed border-border rounded-2xl bg-muted/20">
-              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-              <p className="text-sm font-medium">¡Todo al día!</p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Ya aplicaste a todas las necesidades disponibles.
-              </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {((openNeeds ?? []) as unknown as NeedCardData[]).map((need) => (
+              <NeedCard key={need.id} need={need} />
+            ))}
+          </div>
+          {availableTotal > STUDENT_NEEDS_PAGE_SIZE && (
+            <div className="mt-5">
+              <Pagination
+                href={needsHref}
+                paramName="np"
+                page={safeNeedsPage}
+                pageSize={STUDENT_NEEDS_PAGE_SIZE}
+                total={availableTotal}
+              />
             </div>
-          ) : (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {(openNeeds ?? []).map((need) => (
-                  <NeedCard key={need.id} need={need} />
-                ))}
-              </div>
-              {availableTotal > STUDENT_NEEDS_PAGE_SIZE && (
-                <div className="mt-5">
-                  <Pagination
-                    href="/dashboard"
-                    paramName="np"
-                    page={safeNeedsPage}
-                    pageSize={STUDENT_NEEDS_PAGE_SIZE}
-                    total={availableTotal}
-                  />
-                </div>
-              )}
-            </>
           )}
         </>
       )}

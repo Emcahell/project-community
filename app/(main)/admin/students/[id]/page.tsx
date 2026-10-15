@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/auth";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, GraduationCap, Mail, Calendar } from "lucide-react";
@@ -17,18 +17,7 @@ export default async function StudentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (profile?.role !== "admin") redirect("/dashboard");
+  const { supabase } = await requireRole("admin");
 
   // Fetch student
   const { data: student } = await supabase
@@ -80,7 +69,6 @@ export default async function StudentDetailPage({
                 width={64}
                 height={64}
                 className="w-full h-full object-cover"
-                unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-primary/10 text-primary text-xl font-bold">

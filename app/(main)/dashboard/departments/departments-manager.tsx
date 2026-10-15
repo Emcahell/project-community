@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createClient } from "@/lib/supabase/client";
+import {
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+} from "@/app/actions/departments";
 import {
   departmentSchema,
   type DepartmentValues,
@@ -19,10 +23,8 @@ type Department = {
 };
 
 export function DepartmentsManager({
-  institutionId,
   initialDepartments,
 }: {
-  institutionId: string;
   initialDepartments: Department[];
 }) {
   const router = useRouter();
@@ -44,27 +46,17 @@ export function DepartmentsManager({
   });
 
   async function onSubmit(values: DepartmentValues) {
-    const supabase = createClient();
     setFormError(null);
 
     if (editingId) {
-      const { error } = await supabase
-        .from("departments")
-        .update({ name: values.name })
-        .eq("id", editingId);
-
-      if (error) {
-        setFormError(
-          error.code === "23505"
-            ? "Ya existe un departamento con ese nombre."
-            : "Ocurrió un error al actualizar el departamento."
-        );
+      const result = await updateDepartment(editingId, values);
+      if (result.error) {
+        setFormError(result.error);
         return;
       }
-
       setDepartments((prev) =>
         prev.map((d) =>
-          d.id === editingId ? { ...d, name: values.name } : d
+          d.id === editingId ? { ...d, name: values.name.trim() } : d
         )
       );
       setEditingId(null);
@@ -73,29 +65,15 @@ export function DepartmentsManager({
       return;
     }
 
-    const { data: created, error } = await supabase
-      .from("departments")
-      .insert({
-        institution_id: institutionId,
-        name: values.name,
-      })
-      .select("id, name, created_at")
-      .single();
-
-    if (error) {
-      setFormError(
-        error.code === "23505"
-          ? "Ya existe un departamento con ese nombre."
-          : "Ocurrió un error al guardar el departamento."
-      );
+    const result = await createDepartment(values);
+    if (result.error !== undefined) {
+      setFormError(result.error);
       return;
     }
-
+    const created = result.department;
     if (created) {
       setDepartments((prev) =>
-        [...prev, created].sort((a, b) =>
-          a.name.localeCompare(b.name)
-        )
+        [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
       );
     }
 
@@ -116,15 +94,10 @@ export function DepartmentsManager({
 
   async function confirmDelete() {
     if (!confirmingId) return;
-    const supabase = createClient();
+    const result = await deleteDepartment(confirmingId);
 
-    const { error } = await supabase
-      .from("departments")
-      .delete()
-      .eq("id", confirmingId);
-
-    if (error) {
-      setFormError("Ocurrió un error al eliminar el departamento.");
+    if (result.error) {
+      setFormError(result.error);
       setConfirmingId(null);
       return;
     }
@@ -155,11 +128,12 @@ export function DepartmentsManager({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">
+          <label htmlFor="department-name" className="text-sm font-medium">
             Nombre del departamento{" "}
             <span className="text-destructive">*</span>
           </label>
           <input
+            id="department-name"
             type="text"
             placeholder="Ej: Sistemas, Recursos Humanos, Biblioteca..."
             {...register("name")}

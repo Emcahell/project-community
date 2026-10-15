@@ -1,5 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
+import { WEEK_DAYS } from "@/lib/validations";
+import { requireRole } from "@/lib/auth";
 import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck, ArrowLeft, Building2, MapPin, Phone, Mail, Globe, Calendar } from "lucide-react";
@@ -10,15 +11,10 @@ type Schedule = {
   close_time: string;
 } | null;
 
-const DAY_LABELS: Record<string, string> = {
-  lun: "Lun",
-  mar: "Mar",
-  mie: "Mié",
-  jue: "Jue",
-  vie: "Vie",
-  sab: "Sáb",
-  dom: "Dom",
-};
+// Las claves coinciden con las que guarda el formulario (mon, tue, ...)
+const DAY_LABELS: Record<string, string> = Object.fromEntries(
+  WEEK_DAYS.map((d) => [d.value, d.label]),
+);
 
 export default async function InstitutionDetailPage({
   params,
@@ -26,18 +22,7 @@ export default async function InstitutionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (profile?.role !== "admin") redirect("/dashboard");
+  const { supabase } = await requireRole("admin");
 
   // Fetch institution
   const { data: institution } = await supabase
@@ -85,7 +70,6 @@ export default async function InstitutionDetailPage({
                 width={64}
                 height={64}
                 className="w-full h-full object-cover"
-                unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-primary/10">

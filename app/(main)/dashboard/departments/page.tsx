@@ -1,23 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { DepartmentsManager } from "./departments-manager";
 
+export const metadata: Metadata = { title: "Departamentos" };
+
 export default async function DepartmentsPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (!profile || profile.role !== "institution") redirect("/dashboard");
+  const { supabase, user } = await requireRole("institution");
 
   const { data: institution } = await supabase
     .from("institutions")
@@ -51,7 +42,6 @@ export default async function DepartmentsPage() {
       </div>
 
       <DepartmentsManager
-        institutionId={institution.id}
         initialDepartments={departments ?? []}
       />
     </div>

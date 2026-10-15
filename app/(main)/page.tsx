@@ -1,18 +1,46 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { NeedCard } from "@/components/need-card";
-import { Building2, GraduationCap, Handshake, Sparkles } from "lucide-react";
+import { NeedCard, type NeedCardData } from "@/components/need-card";
+import { Button } from "@/components/ui/button";
+import { Building2, GraduationCap, Handshake, Sparkles, FileText, Send, CheckCircle2 } from "lucide-react";
 
+const LANDING_NEEDS = 6;
+
+const STEPS = [
+  {
+    icon: FileText,
+    title: "La institución publica",
+    text: "Las instituciones públicas describen sus necesidades tecnológicas.",
+  },
+  {
+    icon: Send,
+    title: "El equipo solicita",
+    text: "Un integrante del equipo de estudiantes envía la solicitud.",
+  },
+  {
+    icon: CheckCircle2,
+    title: "Se aprueba y se trabaja",
+    text: "La institución acepta al equipo y el proyecto de PST comienza.",
+  },
+];
+
+/** Landing pública. Los usuarios con sesión son redirigidos a su panel en el middleware. */
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const { data: needs } = await supabase
+  const { data, count: total } = await supabase
     .from("needs")
-    .select(`*, institutions (id, name, address, profiles (avatar_url))`)
+    .select(
+      `id, title, description, status, created_at, institutions!inner (id, name, address, verified, is_disabled, profiles (avatar_url))`,
+      { count: "exact" },
+    )
     .eq("status", "open")
-    .order("created_at", { ascending: false });
+    .not("institutions.is_disabled", "is", true)
+    .order("created_at", { ascending: false })
+    .limit(LANDING_NEEDS);
 
-  const count = needs?.length ?? 0;
+  const needs = (data ?? []) as unknown as NeedCardData[];
+  const count = total ?? needs.length;
 
   return (
     <div>
@@ -47,6 +75,22 @@ export default async function HomePage() {
           <p className="text-white/70 text-sm sm:text-base leading-relaxed mb-8">
             Instituciones públicas publican sus necesidades. Estudiantes las resuelven. Juntos construimos comunidad.
           </p>
+          <div className="flex flex-wrap gap-2 mb-8">
+            <Link href="/register">
+              <Button size="lg" variant="secondary" className="font-semibold">
+                Crear cuenta gratis
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button
+                size="lg"
+                variant="outline"
+                className="font-semibold bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"
+              >
+                Iniciar sesión
+              </Button>
+            </Link>
+          </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5 text-white/60 text-xs">
             <span className="flex items-center gap-1.5">
               <div className="w-5 h-5 rounded-md bg-white/15 flex items-center justify-center">
@@ -81,10 +125,31 @@ export default async function HomePage() {
         )}
       </div>
 
+      {/* Cómo funciona */}
+      <section aria-labelledby="como-funciona" className="mb-12">
+        <h2 id="como-funciona" className="text-lg font-bold tracking-tight mb-4">
+          ¿Cómo funciona?
+        </h2>
+        <ol className="grid gap-3 sm:grid-cols-3">
+          {STEPS.map(({ icon: Icon, title, text }, i) => (
+            <li key={title} className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-primary" />
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground">Paso {i + 1}</span>
+              </div>
+              <p className="font-semibold text-sm">{title}</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       {/* Section header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-bold tracking-tight">Necesidades abiertas</h2>
+          <h2 className="text-lg font-bold tracking-tight">Necesidades recientes</h2>
           <p className="text-muted-foreground text-sm mt-0.5">
             {count > 0
               ? `${count} necesidad${count !== 1 ? "es" : ""} esperando a un estudiante`
@@ -98,7 +163,7 @@ export default async function HomePage() {
         )}
       </div>
 
-      {needs && needs.length > 0 ? (
+      {needs.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2">
           {needs.map((need) => (
             <NeedCard key={need.id} need={need} />

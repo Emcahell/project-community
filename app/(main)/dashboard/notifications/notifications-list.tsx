@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, ArrowRight } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { markNotificationRead } from "@/app/actions/notifications";
 import { formatRelativeDate } from "@/lib/utils";
 
 type NotificationItem = {
@@ -27,8 +27,7 @@ export function NotificationsList({
 
   async function handleClick(n: NotificationItem) {
     if (!n.read) {
-      const supabase = createClient();
-      await supabase.from("notifications").update({ read: true }).eq("id", n.id);
+      await markNotificationRead(n.id);
       setItems((prev) =>
         prev.map((x) => (x.id === n.id ? { ...x, read: true } : x))
       );

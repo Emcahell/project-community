@@ -1,9 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { requireRole } from "@/lib/auth";
+import { getTeamMap, getProfilesByIds, type MemberProfile } from "@/lib/team";
 import { ApplicationsList } from "./applications-list";
+import { NeedActions } from "./need-actions";
 import { NEED_STATUS } from "@/lib/constants";
+
+export const metadata: Metadata = { title: "Solicitudes de la necesidad" };
 
 export default async function NeedApplicationsPage({
   params,
@@ -11,85 +16,39 @@ export default async function NeedApplicationsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const { supabase, user } = await requireRole("institution");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: need } = await supabase
-    .from("needs")
-    .select(`*, institutions!inner(profile_id, name), departments(name)`)
-    .eq("id", id)
-    .single();
+  const [{ data: need }, { data: applications }] = await Promise.all([
+    supabase
+      .from("needs")
+      .select(`*, institutions!inner(profile_id, name), departments(name)`)
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("applications")
+      .select(`*, profiles(full_name, avatar_url, first_name, last_name)`)
+      .eq("need_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (!need) notFound();
 
   const institution = need.institutions as { profile_id: string; name: string };
   if (institution.profile_id !== user.id) redirect("/dashboard");
 
-  const { data: applications } = await supabase
-    .from("applications")
-    .select(`*, profiles(full_name, avatar_url, first_name, last_name)`)
-    .eq("need_id", id)
-    .order("created_at", { ascending: false });
-
-  // Fetch team members for each applicant (bidirectional)
-  const applicantIds = (applications ?? []).map((a) => a.student_id);
-  const teamMembersByStudent: Record<string, { id: string; full_name: string | null; first_name: string | null; last_name: string | null }[]> = {};
-
-  if (applicantIds.length > 0) {
-    // Fetch both directions: where applicant is owner AND where applicant is member
-    const { data: ownedRows } = await supabase
-      .from("team_members")
-      .select("owner_id, member_id")
-      .in("owner_id", applicantIds);
-
-    const { data: memberOfRows } = await supabase
-      .from("team_members")
-      .select("member_id, owner_id")
-      .in("member_id", applicantIds);
-
-    // Build: for each applicant, collect their team members from both directions
-    for (const row of ownedRows ?? []) {
-      if (!teamMembersByStudent[row.owner_id]) teamMembersByStudent[row.owner_id] = [];
-      teamMembersByStudent[row.owner_id].push({ id: row.member_id } as { id: string; full_name: string | null; first_name: string | null; last_name: string | null });
-    }
-    for (const row of memberOfRows ?? []) {
-      if (!teamMembersByStudent[row.member_id]) teamMembersByStudent[row.member_id] = [];
-      teamMembersByStudent[row.member_id].push({ id: row.owner_id } as { id: string; full_name: string | null; first_name: string | null; last_name: string | null });
-    }
-
-    // Fetch all unique member profiles
-    const allMemberIds = [...new Set([
-      ...(ownedRows ?? []).map((r) => r.member_id),
-      ...(memberOfRows ?? []).map((r) => r.owner_id),
-    ])];
-    let allMemberProfiles: { id: string; full_name: string | null; first_name: string | null; last_name: string | null }[] = [];
-
-    if (allMemberIds.length > 0) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, full_name, first_name, last_name")
-        .in("id", allMemberIds);
-      allMemberProfiles = data ?? [];
-    }
-
-    const profileMap = new Map(allMemberProfiles.map((p) => [p.id, p]));
-    for (const applicantId of Object.keys(teamMembersByStudent)) {
-      teamMembersByStudent[applicantId] = teamMembersByStudent[applicantId]
-        .map((m) => profileMap.get(m.id) ?? m)
-        .filter((m) => m.id);
-      // Deduplicate
-      const seen = new Set<string>();
-      teamMembersByStudent[applicantId] = teamMembersByStudent[applicantId].filter((m) => {
-        if (seen.has(m.id)) return false;
-        seen.add(m.id);
-        return true;
-      });
-    }
-  }
+  // Integrantes del equipo de cada solicitante (relación bidireccional)
+  const applicantIds = [...new Set((applications ?? []).map((a) => a.student_id as string))];
+  const teamMap = await getTeamMap(supabase, applicantIds);
+  const profileMap = await getProfilesByIds(
+    supabase,
+    [...new Set(Object.values(teamMap).flat())],
+  );
+  const teamMembersByStudent: Record<string, MemberProfile[]> = Object.fromEntries(
+    Object.entries(teamMap).map(([studentId, ids]) => [
+      studentId,
+      ids.map((memberId) => profileMap.get(memberId)).filter((p): p is MemberProfile => Boolean(p)),
+    ]),
+  );
 
   const total = applications?.length ?? 0;
   const pending = applications?.filter((a) => a.status === "pending").length ?? 0;
@@ -114,7 +73,7 @@ export default async function NeedApplicationsPage({
           </span>
         )}
         <div className="flex items-start gap-3 mt-2">
-          <h1 className="text-2xl font-bold flex-1">{need.title}</h1>
+          <h1 className="text-2xl font-bold flex-1 break-words">{need.title}</h1>
           <span
             className={`shrink-0 mt-1 text-xs font-medium px-2 py-0.5 rounded-full border ${statusInfo.className}`}
           >
@@ -122,9 +81,14 @@ export default async function NeedApplicationsPage({
           </span>
         </div>
         {need.description && (
-          <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+          <p className="text-sm text-muted-foreground mt-3 leading-relaxed whitespace-pre-line">
             {need.description}
           </p>
+        )}
+        {need.status === "open" && (
+          <div className="mt-4">
+            <NeedActions needId={id} canDelete={total === 0} />
+          </div>
         )}
       </div>
 

@@ -9,6 +9,7 @@ export function getInitials(name: string | null | undefined): string {
   if (!name) return "?"
   return name
     .split(" ")
+    .filter(Boolean)
     .slice(0, 2)
     .map((n) => n[0])
     .join("")
@@ -29,4 +30,20 @@ export function formatRelativeDate(dateStr: string | null | undefined): string {
   if (diffDays < 365) return `hace ${months} mes${months > 1 ? "es" : ""}`
   const years = Math.floor(diffDays / 365)
   return `hace ${years} año${years > 1 ? "s" : ""}`
+}
+
+type NameParts = {
+  full_name?: string | null
+  first_name?: string | null
+  last_name?: string | null
+}
+
+/** Nombre visible: "Nombre Apellido" o, si no existe, `full_name`. */
+export function getDisplayName(
+  profile: NameParts | null | undefined,
+  fallback = "Sin nombre",
+): string {
+  if (!profile) return fallback
+  const composed = [profile.first_name, profile.last_name].filter(Boolean).join(" ")
+  return composed || profile.full_name || fallback
 }

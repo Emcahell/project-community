@@ -1,85 +1,59 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { getInitials } from "@/lib/utils";
+import { getInitials, getDisplayName } from "@/lib/utils";
 import { toast } from "sonner";
-import { saveTeam } from "@/app/actions/team";
-import { createClient } from "@/lib/supabase/client";
+import { saveTeam, findStudentByEmail } from "@/app/actions/team";
+import { MAX_TEAM_SIZE } from "@/lib/validations";
+import type { MemberProfile } from "@/lib/team";
 import { Search, X, Users, UserPlus, Loader2 } from "lucide-react";
 
-type MemberProfile = {
-  id: string;
-  full_name: string | null;
-  first_name: string | null;
-  last_name: string | null;
-};
-
-type SearchResult = MemberProfile & {
-  email: string;
-};
-
-function getDisplayName(profile: { full_name: string | null; first_name: string | null; last_name: string | null }) {
-  const composed = [profile.first_name, profile.last_name].filter(Boolean).join(" ");
-  return composed || profile.full_name || "Sin nombre";
-}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function TeamManager({
-  userId,
   initialMembers,
 }: {
-  userId: string;
   initialMembers: MemberProfile[];
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<MemberProfile[]>([]);
   const [searching, setSearching] = useState(false);
   const [members, setMembers] = useState<MemberProfile[]>(initialMembers);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const searchByEmail = useCallback(async (email: string) => {
-    if (!email.trim()) {
-      setResults([]);
-      return;
-    }
-    setSearching(true);
-    const supabase = createClient();
+  const email = query.trim();
+  const isValidEmail = EMAIL_RE.test(email);
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, full_name, first_name, last_name, email")
-      .eq("role", "student")
-      .neq("id", userId)
-      .ilike("email", `%${email}%`)
-      .limit(10);
-
-    if (!error && data) {
-      // Filter out already-added members
-      const memberIds = new Set(members.map((m) => m.id));
-      setResults(
-        data.filter((d) => !memberIds.has(d.id)).map((d) => ({
-          ...d,
-          email: (d as { email: string | null }).email ?? "",
-        }))
-      );
-    }
-    setSearching(false);
-  }, [userId, members]);
-
+  // Búsqueda por correo exacto (con debounce) para no exponer correos ajenos
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      searchByEmail(query);
-    }, 300);
+    if (!isValidEmail) return;
+    let active = true;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      const result = await findStudentByEmail(email);
+      if (!active) return;
+      if (result.error !== undefined) {
+        toast.error(result.error);
+        setResults([]);
+      } else {
+        const found = result.student;
+        setResults(found && !members.some((m) => m.id === found.id) ? [found] : []);
+      }
+      setSearching(false);
+    }, 400);
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      active = false;
+      clearTimeout(timer);
     };
-  }, [query, searchByEmail]);
+  }, [email, isValidEmail, members]);
 
   function addMember(profile: MemberProfile) {
+    if (members.length >= MAX_TEAM_SIZE) {
+      toast.error(`Un equipo puede tener como máximo ${MAX_TEAM_SIZE} integrantes además de ti.`);
+      return;
+    }
     setMembers((prev) => [...prev, profile]);
     setResults((prev) => prev.filter((r) => r.id !== profile.id));
     setQuery("");
@@ -111,11 +85,14 @@ export function TeamManager({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
-          ref={inputRef}
-          type="text"
+          type="email"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nombre..."
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setResults([]);
+          }}
+          placeholder="Correo exacto del compañero (ej. ana@correo.com)"
+          aria-label="Buscar estudiante por correo"
           className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
         {searching && (
@@ -140,11 +117,9 @@ export function TeamManager({
                 <p className="text-sm font-medium truncate">
                   {getDisplayName(r)}
                 </p>
-                {r.email && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {r.email}
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground truncate">
+                  {email}
+                </p>
               </div>
               <UserPlus className="w-4 h-4 text-muted-foreground ml-auto shrink-0" />
             </button>
@@ -152,9 +127,9 @@ export function TeamManager({
         </div>
       )}
 
-      {!searching && query.trim() && results.length === 0 && (
+      {!searching && isValidEmail && results.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-2">
-          No se encontraron estudiantes.
+          No hay ningún estudiante registrado con ese correo.
         </p>
       )}
 
@@ -174,7 +149,7 @@ export function TeamManager({
               Aún no tienes integrantes en tu equipo.
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Busca por nombre arriba para agregar.
+              Escribe el correo de tu compañero arriba para agregarlo.
             </p>
           </div>
         ) : (

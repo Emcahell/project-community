@@ -1,106 +1,84 @@
-"use client";
-
-import { useState, useMemo } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import {
-  Building2,
-  BadgeCheck,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  GraduationCap,
-} from "lucide-react";
-import { verifyInstitution, toggleInstitutionDisabled, toggleStudentDisabled } from "@/app/actions/profile";
-import { getInitials } from "@/lib/utils";
+import Image from "next/image";
+import { Building2, BadgeCheck, Search, GraduationCap } from "lucide-react";
+import { Pagination } from "@/components/pagination";
+import { getDisplayName } from "@/lib/utils";
+import { AdminActions } from "./admin-actions";
 
-const ITEMS_PER_PAGE = 10;
+export const ADMIN_PAGE_SIZE = 10;
 
 type InstitutionProfile = { full_name: string | null; avatar_url: string | null };
 
-type Institution = {
+export type AdminInstitution = {
   id: string;
   name: string;
   address: string | null;
   verified: boolean;
-  is_disabled: boolean;
+  is_disabled: boolean | null;
   profiles: InstitutionProfile[] | InstitutionProfile | null;
 };
 
-type Student = {
+export type AdminStudent = {
   id: string;
   full_name: string | null;
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
   semester: number | null;
-  is_disabled: boolean;
+  is_disabled: boolean | null;
 };
 
-type TabType = "institutions" | "students";
-type InstitutionFilter = "all" | "verified" | "unverified" | "disabled";
-type StudentFilter = "all" | "disabled";
+export type AdminTab = "institutions" | "students";
+export type AdminFilter = "all" | "verified" | "unverified" | "disabled";
 
-function getProfile(inst: Institution): InstitutionProfile | null {
-  if (!inst.profiles) return null;
-  return Array.isArray(inst.profiles) ? inst.profiles[0] ?? null : inst.profiles;
+const FILTERS: Record<AdminTab, { value: AdminFilter; label: string }[]> = {
+  institutions: [
+    { value: "all", label: "Todos" },
+    { value: "verified", label: "Verificados" },
+    { value: "unverified", label: "Sin verificar" },
+    { value: "disabled", label: "Inhabilitados" },
+  ],
+  students: [
+    { value: "all", label: "Todos" },
+    { value: "disabled", label: "Inhabilitados" },
+  ],
+};
+
+function buildHref(params: Record<string, string>) {
+  const search = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value && value !== "all"),
+  ).toString();
+  return search ? `/admin?${search}` : "/admin";
 }
 
-export function AdminPageClient({
+function getProfile(inst: AdminInstitution): InstitutionProfile | null {
+  if (!inst.profiles) return null;
+  return Array.isArray(inst.profiles) ? (inst.profiles[0] ?? null) : inst.profiles;
+}
+
+export function AdminPanel({
+  tab,
+  filter,
+  search,
+  page,
+  total,
+  institutionCount,
+  studentCount,
   institutions,
   students,
 }: {
-  institutions: Institution[];
-  students: Student[];
+  tab: AdminTab;
+  filter: AdminFilter;
+  search: string;
+  page: number;
+  total: number;
+  institutionCount: number;
+  studentCount: number;
+  institutions: AdminInstitution[];
+  students: AdminStudent[];
 }) {
-  const [tab, setTab] = useState<TabType>("institutions");
-  const [instFilter, setInstFilter] = useState<InstitutionFilter>("all");
-  const [studentFilter, setStudentFilter] = useState<StudentFilter>("all");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-
-  const resetPage = () => setPage(1);
-
-  const filteredInstitutions = useMemo(() => {
-    let result = institutions;
-
-    if (instFilter === "verified") result = result.filter((i) => i.verified && !i.is_disabled);
-    else if (instFilter === "unverified") result = result.filter((i) => !i.verified && !i.is_disabled);
-    else if (instFilter === "disabled") result = result.filter((i) => i.is_disabled);
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((i) => {
-        const profile = getProfile(i);
-        return (
-          i.name.toLowerCase().includes(q) ||
-          profile?.full_name?.toLowerCase().includes(q) ||
-          i.address?.toLowerCase().includes(q)
-        );
-      });
-    }
-
-    return result;
-  }, [institutions, instFilter, search]);
-
-  const filteredStudents = useMemo(() => {
-    let result = students;
-
-    if (studentFilter === "disabled") result = result.filter((s) => s.is_disabled);
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((s) => {
-        const name = s.full_name || `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim();
-        return name.toLowerCase().includes(q);
-      });
-    }
-
-    return result;
-  }, [students, studentFilter, search]);
-
-  const currentItems = tab === "institutions" ? filteredInstitutions : filteredStudents;
-  const totalPages = Math.ceil(currentItems.length / ITEMS_PER_PAGE);
+  const tabParam = tab === "students" ? "students" : "";
+  const items = tab === "institutions" ? institutions : students;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -111,231 +89,170 @@ export function AdminPageClient({
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-2xl font-bold">{institutions.length}</p>
+          <p className="text-2xl font-bold">{institutionCount}</p>
           <p className="text-xs text-muted-foreground mt-1">Instituciones</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-2xl font-bold">{students.length}</p>
+          <p className="text-2xl font-bold">{studentCount}</p>
           <p className="text-xs text-muted-foreground mt-1">Estudiantes</p>
         </div>
       </div>
 
-      {/* Tab switch */}
-      <div className="flex rounded-lg border border-border bg-muted p-1 mb-4">
-        <button
-          onClick={() => { setTab("institutions"); setSearch(""); setPage(1); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-            tab === "institutions"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Building2 className="w-4 h-4" />
-          Instituciones
-        </button>
-        <button
-          onClick={() => { setTab("students"); setSearch(""); setPage(1); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-            tab === "students"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <GraduationCap className="w-4 h-4" />
-          Estudiantes
-        </button>
-      </div>
+      <nav aria-label="Secciones" className="flex rounded-lg border border-border bg-muted p-1 mb-4">
+        {(
+          [
+            { value: "institutions", label: "Instituciones", icon: Building2 },
+            { value: "students", label: "Estudiantes", icon: GraduationCap },
+          ] as const
+        ).map(({ value, label, icon: Icon }) => (
+          <Link
+            key={value}
+            href={buildHref({ tab: value === "students" ? "students" : "" })}
+            aria-current={tab === value ? "page" : undefined}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === value
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </Link>
+        ))}
+      </nav>
 
-      {/* Filters + Search */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <div className="flex gap-1.5 flex-1 flex-wrap">
-          {tab === "institutions" ? (
-            <>
-              <FilterButton active={instFilter === "all"} onClick={() => { setInstFilter("all"); resetPage(); }}>Todos</FilterButton>
-              <FilterButton active={instFilter === "verified"} onClick={() => { setInstFilter("verified"); resetPage(); }}>Verificados</FilterButton>
-              <FilterButton active={instFilter === "unverified"} onClick={() => { setInstFilter("unverified"); resetPage(); }}>Sin verificar</FilterButton>
-              <FilterButton active={instFilter === "disabled"} onClick={() => { setInstFilter("disabled"); resetPage(); }}>Inhabilitados</FilterButton>
-            </>
-          ) : (
-            <>
-              <FilterButton active={studentFilter === "all"} onClick={() => { setStudentFilter("all"); resetPage(); }}>Todos</FilterButton>
-              <FilterButton active={studentFilter === "disabled"} onClick={() => { setStudentFilter("disabled"); resetPage(); }}>Inhabilitados</FilterButton>
-            </>
-          )}
+          {FILTERS[tab].map((f) => (
+            <Link
+              key={f.value}
+              href={buildHref({ tab: tabParam, filter: f.value, q: search })}
+              aria-current={filter === f.value ? "true" : undefined}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                filter === f.value
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {f.label}
+            </Link>
+          ))}
         </div>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <form action="/admin" role="search" className="relative">
+          {tabParam && <input type="hidden" name="tab" value={tabParam} />}
+          {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
-            type="text"
+            type="search"
+            name="q"
+            defaultValue={search}
             placeholder="Buscar..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+            aria-label="Buscar"
             className="pl-8 pr-3 py-1.5 rounded-lg border border-input bg-background text-sm outline-none focus:ring-2 focus:ring-ring w-48"
           />
-        </div>
+        </form>
       </div>
 
-      {/* List */}
       <div className="space-y-2">
-        {tab === "institutions" ? (
-          filteredInstitutions.length > 0 ? (
-            filteredInstitutions
-              .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
-              .map((inst) => (
-                <InstitutionCard key={inst.id} institution={inst} />
-              ))
-          ) : (
-            <EmptyState message="No hay instituciones con estos filtros." />
-          )
-        ) : filteredStudents.length > 0 ? (
-          filteredStudents
-            .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
-            .map((student) => (
-              <StudentCard key={student.id} student={student} />
-            ))
+        {items.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-muted-foreground">
+              No hay {tab === "institutions" ? "instituciones" : "estudiantes"} con estos filtros.
+            </p>
+          </div>
+        ) : tab === "institutions" ? (
+          institutions.map((inst) => <InstitutionRow key={inst.id} institution={inst} />)
         ) : (
-          <EmptyState message="No hay estudiantes con estos filtros." />
+          students.map((student) => <StudentRow key={student.id} student={student} />)
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
-          <p className="text-xs text-muted-foreground">
-            Mostrando {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, currentItems.length)} de {currentItems.length}
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-xs text-muted-foreground px-2">
-              {page}/{totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+      {total > ADMIN_PAGE_SIZE && (
+        <div className="mt-6 pt-4 border-t border-border">
+          <Pagination
+            href={buildHref({ tab: tabParam, filter, q: search })}
+            page={page}
+            pageSize={ADMIN_PAGE_SIZE}
+            total={total}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function InstitutionCard({ institution }: { institution: Institution }) {
-  const [verified, setVerified] = useState(institution.verified);
-  const [disabled, setDisabled] = useState(institution.is_disabled);
-  const [loading, setLoading] = useState(false);
+function InstitutionRow({ institution }: { institution: AdminInstitution }) {
   const profile = getProfile(institution);
-
-  async function handleVerify() {
-    setLoading(true);
-    const result = await verifyInstitution(institution.id, !verified);
-    if (!result?.error) setVerified((v) => !v);
-    setLoading(false);
-  }
-
-  async function handleToggleDisabled() {
-    setLoading(true);
-    const result = await toggleInstitutionDisabled(institution.id, !disabled);
-    if (!result?.error) setDisabled((d) => !d);
-    setLoading(false);
-  }
+  const disabled = Boolean(institution.is_disabled);
 
   return (
-    <Link
-      href={`/admin/institutions/${institution.id}`}
-      className={`flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:bg-muted/50 transition-colors ${disabled ? "opacity-60" : ""}`}
+    <div
+      className={`flex items-center gap-3 rounded-xl border border-border bg-card p-4 ${disabled ? "opacity-60" : ""}`}
     >
-      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0">
-        {profile?.avatar_url ? (
-          <Image
-            src={profile.avatar_url}
-            alt={institution.name}
-            width={40}
-            height={40}
-            className="w-full h-full object-cover"
-            unoptimized
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-primary/10">
-            <Building2 className="w-5 h-5 text-primary" />
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className="font-medium text-sm truncate">{institution.name}</p>
-          {verified && <BadgeCheck className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />}
-          {disabled && (
-            <span className="text-[10px] font-semibold text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded">
-              Inhabilitada
-            </span>
+      <Link
+        href={`/admin/institutions/${institution.id}`}
+        className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+      >
+        <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-muted shrink-0">
+          {profile?.avatar_url ? (
+            <Image
+              src={profile.avatar_url}
+              alt={institution.name}
+              fill
+              sizes="40px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-primary/10">
+              <Building2 className="w-5 h-5 text-primary" />
+            </div>
           )}
         </div>
-        {institution.address && (
-          <p className="text-xs text-muted-foreground truncate">{institution.address}</p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.preventDefault()}>
-        <button
-          onClick={handleVerify}
-          disabled={loading}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
-            verified
-              ? "border-sky-300 bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 hover:bg-sky-200"
-              : "border-border bg-background text-muted-foreground hover:border-sky-300 hover:text-sky-600"
-          }`}
-        >
-          {loading ? "..." : verified ? "Verificada" : "Verificar"}
-        </button>
-        <button
-          onClick={handleToggleDisabled}
-          disabled={loading}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
-            disabled
-              ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100"
-              : "border-border bg-background text-muted-foreground hover:border-red-300 hover:text-red-600"
-          }`}
-        >
-          {loading ? "..." : disabled ? "Habilitar" : "Inhabilitar"}
-        </button>
-      </div>
-    </Link>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="font-medium text-sm truncate">{institution.name}</p>
+            {institution.verified && (
+              <BadgeCheck
+                className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0"
+                aria-label="Verificada"
+              />
+            )}
+            {disabled && (
+              <span className="text-[10px] font-semibold text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded">
+                Inhabilitada
+              </span>
+            )}
+          </div>
+          {institution.address && (
+            <p className="text-xs text-muted-foreground truncate">{institution.address}</p>
+          )}
+        </div>
+      </Link>
+      <AdminActions
+        kind="institution"
+        id={institution.id}
+        verified={institution.verified}
+        disabled={disabled}
+      />
+    </div>
   );
 }
 
-function StudentCard({ student }: { student: Student }) {
-  const [disabled, setDisabled] = useState(student.is_disabled);
-  const [loading, setLoading] = useState(false);
-
-  const displayName =
-    student.full_name || `${student.first_name ?? ""} ${student.last_name ?? ""}`.trim() || "Sin nombre";
-
-  async function handleToggleDisabled() {
-    setLoading(true);
-    const result = await toggleStudentDisabled(student.id, !disabled);
-    if (!result?.error) setDisabled((d) => !d);
-    setLoading(false);
-  }
+function StudentRow({ student }: { student: AdminStudent }) {
+  const disabled = Boolean(student.is_disabled);
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl border border-border bg-card p-4 ${disabled ? "opacity-60" : ""}`}>
-      <div className="flex-1 min-w-0">
+    <div
+      className={`flex items-center gap-3 rounded-xl border border-border bg-card p-4 ${disabled ? "opacity-60" : ""}`}
+    >
+      <Link
+        href={`/admin/students/${student.id}`}
+        className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
+      >
         <div className="flex items-center gap-1.5">
-          <p className="font-medium text-sm truncate">{displayName}</p>
+          <p className="font-medium text-sm truncate">{getDisplayName(student)}</p>
           {disabled && (
             <span className="text-[10px] font-semibold text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded">
               Inhabilitado
@@ -345,52 +262,8 @@ function StudentCard({ student }: { student: Student }) {
         {student.semester && (
           <p className="text-xs text-muted-foreground">{student.semester}° Trayecto</p>
         )}
-      </div>
-
-      <div className="shrink-0">
-        <button
-          onClick={handleToggleDisabled}
-          disabled={loading}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
-            disabled
-              ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100"
-              : "border-border bg-background text-muted-foreground hover:border-red-300 hover:text-red-600"
-          }`}
-        >
-          {loading ? "..." : disabled ? "Habilitar" : "Inhabilitar"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function FilterButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
-        active
-          ? "border-primary bg-primary/10 text-primary"
-          : "border-border bg-background text-muted-foreground hover:border-border/80 hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="text-center py-12">
-      <p className="text-sm text-muted-foreground">{message}</p>
+      </Link>
+      <AdminActions kind="student" id={student.id} disabled={disabled} />
     </div>
   );
 }

@@ -3,6 +3,18 @@ import { z } from "zod";
 export const MAX_DESCRIPTION = 1500;
 export const MAX_APPLICATION_MESSAGE = 500;
 export const MAX_AVATAR_SIZE = 4 * 1024 * 1024;
+export const ALLOWED_AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+export const MIN_PASSWORD = 8;
+export const MAX_TEAM_SIZE = 6;
+/** Veces que un estudiante puede volver a aplicar a la misma necesidad tras ser rechazado. */
+export const MAX_APPLICATIONS_PER_NEED = 3;
+
+export const idSchema = z.string().uuid("Identificador inválido.");
+
+const passwordField = z
+  .string()
+  .min(MIN_PASSWORD, `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres.`)
+  .max(72, "La contraseña no puede superar 72 caracteres.");
 
 // ---------- Auth ----------
 
@@ -25,9 +37,7 @@ export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 
 export const resetPasswordSchema = z
   .object({
-    password: z
-      .string()
-      .min(6, "La contraseña debe tener al menos 6 caracteres."),
+    password: passwordField,
     confirm: z.string().min(1, "Confirma tu contraseña."),
   })
   .refine((data) => data.password === data.confirm, {
@@ -43,9 +53,7 @@ export const registerSchema = z
     last_name: z.string().trim(),
     institution_name: z.string().trim(),
     email: emailField,
-    password: z
-      .string()
-      .min(6, "La contraseña debe tener al menos 6 caracteres."),
+    password: passwordField,
     confirm_password: z.string().min(1, "Confirma tu contraseña."),
   })
   .superRefine((data, ctx) => {
@@ -169,14 +177,22 @@ export type InstitutionProfileValues = z.infer<typeof institutionProfileSchema>;
 // ---------- Departamentos ----------
 
 export const departmentSchema = z.object({
-  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres."),
+  name: z
+    .string()
+    .trim()
+    .min(2, "El nombre debe tener al menos 2 caracteres.")
+    .max(80, "El nombre no puede superar 80 caracteres."),
 });
 export type DepartmentValues = z.infer<typeof departmentSchema>;
 
 // ---------- Necesidades ----------
 
 export const needSchema = z.object({
-  title: z.string().trim().min(5, "El título debe tener al menos 5 caracteres."),
+  title: z
+    .string()
+    .trim()
+    .min(5, "El título debe tener al menos 5 caracteres.")
+    .max(120, "El título no puede superar 120 caracteres."),
   description: z
     .string()
     .trim()
@@ -185,7 +201,7 @@ export const needSchema = z.object({
       MAX_DESCRIPTION,
       `La descripción no puede superar ${MAX_DESCRIPTION} caracteres.`,
     ),
-  department_id: z.string().trim().optional(),
+  department_id: z.union([z.literal(""), idSchema]).optional(),
 });
 export type NeedValues = z.infer<typeof needSchema>;
 
@@ -213,3 +229,7 @@ export const rejectionReasonSchema = z.object({
     ),
 });
 export type RejectionReasonValues = z.infer<typeof rejectionReasonSchema>;
+
+export const teamSchema = z
+  .array(idSchema)
+  .max(MAX_TEAM_SIZE, `Un equipo puede tener como máximo ${MAX_TEAM_SIZE} integrantes además de ti.`);

@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
                   {...register("password")}
                   className="w-full rounded-xl border border-input bg-background mt-1 px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring/50 focus:border-primary/50 transition-all placeholder:text-muted-foreground/50"
                 />
-                <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
+                <p className="text-xs text-muted-foreground">Mínimo 8 caracteres</p>
                 {errors.password && (
                   <p className="text-xs text-destructive">{errors.password.message}</p>
                 )}
